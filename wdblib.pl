@@ -877,6 +877,7 @@ sub CaseLowerDomainNameURI
 	local( $uri ) = shift;
 # print DEBUGOUT "CaseLowerDomainNameURI( $uri ):\n" if ($DEBUG);
 	$uri =~ s%(https?://[^/]*)%\L$1\E%i;
+	$uri =~ s:/$::;
 # print DEBUGOUT "to: $uri\n" if ($DEBUG);
 	return ($uri);
 }
@@ -2005,7 +2006,7 @@ sub ParseRSS
 			$rdfabout = $ana_rdfabout;
 			$rdfabout =~ s/^.*<(channel|item)[ \t]+rdf:about=\"([^\"]*)\".*$/$2/;
 			$rdfabout = &ExtractNormalURI( $rdfabout );
-			if ( $rdfabout =~ m/^https?:/ ) {
+#			if ( $rdfabout =~ m/^https?:/ ) {
  print DEBUGOUT "Found URI: \[$rdfabout\]\n" if ($DEBUG);
 				undef $lmdate;
 				undef $title;
@@ -2062,6 +2063,8 @@ sub ParseRSS
 						if ( $link eq "" ) {
 							$link = $ana_link;
 							$link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#$1#;
+							$link =~ s/^.*http/http/;
+							$link =~ s/]+//;
 							$link = &ExtractNormalURI( $link );
 						}
 						if ( $founditem == 1 ) {
@@ -2161,7 +2164,7 @@ sub ParseRSS
 						undef $DP{ $dpl, "Content-Type" };
 #					}
 				}
-			}
+#			}
 		}
 	}
 
