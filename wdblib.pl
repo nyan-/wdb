@@ -182,7 +182,7 @@ sub GetArg
 		( $sym, $val ) = split( '=', $i );
 		$val =~ tr/+/ /;
 		$val =~ s/%([0-9a-fA-F][0-9a-fA-F])/pack("C", hex($1))/eg;
-		&jcode'convert( *val, $JCODE );
+		jcode::convert( \$val, $JCODE );
 #		$val =~ s/</&lt;/g;
 #		$val =~ s/>/&gt;/g;
 		$val =~ s/\015\012/\012/g;
@@ -876,7 +876,7 @@ sub CaseLowerDomainNameURI
 {
 	local( $uri ) = shift;
 # print DEBUGOUT "CaseLowerDomainNameURI( $uri ):\n" if ($DEBUG);
-	$uri =~ s%(http://[^/]*)%\L\1\E%i;
+	$uri =~ s%(http://[^/]*)%\L$1\E%i;
 # print DEBUGOUT "to: $uri\n" if ($DEBUG);
 	return ($uri);
 }
@@ -910,14 +910,14 @@ sub ExtractNormalDate
 	# DD Cal YYYY hh:mm:ss Zone
 	$EXTRACTTIMEFORMAT = "DD_Cal_YYYY_hh:mm:ss_Zone";
 	$w = " $date";
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
  print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $day, $month, $year, $hour, $min, $sec ) = split( "[/: ]+", $w );
 		( $dummy1, $dummy2, $dummy3, $dummy4, $dummy5, $dummy6, $tz ) = split( "[/: ]+", $w );
 		$month = $MONTHNAMETOMONTH{$month};
-		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 		$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
  print DEBUGOUT "DD Cal YYYY hh:mm:ss Zone \[$day, $month, $year, $hour, $min, $sec, $tz \]\n" if ($DEBUG);
 		if ( $year < 1900 ) {
@@ -947,14 +947,14 @@ sub ExtractNormalDate
 	# DD Cal YYYY hh:mm Zone
 	$EXTRACTTIMEFORMAT = "DD_Cal_YYYY_hh:mm_Zone";
 	$w = " $date";
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[- ]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]+(\d{1,4})[^\d]+(\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
  print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, 0, "" );
 		( $day, $month, $year, $hour, $min ) = split( "[/: ]+", $w );
 		( $dummy1, $dummy2, $dummy3, $dummy4, $dummy5, $tz ) = split( "[/: ]+", $w );
 		$month = $MONTHNAMETOMONTH{$month};
-		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 		$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
  print DEBUGOUT "DD Cal YYYY hh:mm Zone \[$day, $month, $year, $hour, $min, $tz \]\n" if ($DEBUG);
 		if ( $year < 1900 ) {
@@ -1009,14 +1009,14 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "YYYY/MM/DD_hh:mm:ss_Zone";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $year, $month, $day, $hour, $min, $sec ) = split( "[/: ]+", $w );
 		( $dummy1, $dummy2, $dummy3, $dummy4, $dummy5, $dummy6, $tz ) = split( "[/: ]+", $w );
-		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+		$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 		$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
 # print DEBUGOUT "YYYY\/MM\/DD hh:mm:ss Zone \[$year, $month, $day, $hour, $min, $sec, $tz \]\n" if ($DEBUG);
 		if ( $year < 1900 ) {
@@ -1046,14 +1046,14 @@ sub ExtractNormalDate
 	# DD Cal hh:mm:ss Zone YYYY
 	$EXTRACTTIMEFORMAT = "DD_Cal_hh:mm:ss_Zone_YYYY";
 	$w = " $date";
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $day, $month, $hour, $min, $sec, $year ) = split( "[/: ]+", $w );
 		if ( $year !~ /\d/ ) {
 			( $dummy1, $dummy2, $dummy3, $dummy4, $dummy5, $tz, $year ) = split( "[/: ]+", $w );
-			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 			$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
 		}
 		$month = $MONTHNAMETOMONTH{$month};
@@ -1085,14 +1085,14 @@ sub ExtractNormalDate
 	# DD Cal hh:mm Zone YYYY
 	$EXTRACTTIMEFORMAT = "DD_Cal_hh:mm_Zone_YYYY";
 	$w = " $date";
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4 $5% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, 0, "" );
 		( $day, $month, $hour, $min, $year ) = split( "[/: ]+", $w );
 		if ( $year !~ /\d/ ) {
 			( $dummy1, $dummy2, $dummy3, $dummy4, $tz, $year ) = split( "[/: ]+", $w );
-			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 			$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
 		}
 		$month = $MONTHNAMETOMONTH{$month};
@@ -1124,14 +1124,14 @@ sub ExtractNormalDate
 	# Cal DD hh:mm:ss Zone YYYY
 	$EXTRACTTIMEFORMAT = "Cal_DD_hh:mm:ss_Zone_YYYY";
 	$w = $date;
-#	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4% ) {
-	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4% ) {
+#	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4% ) {
+	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $month, $day, $hour, $min, $sec, $year ) = split( "[/: ]+", $w );
 		if ( $year !~ /\d/ ) {
 			( $dummy1, $dummy2, $dummy3, $dummy4, $dummy5, $tz, $year ) = split( "[/: ]+", $w );
-			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 			$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
 		}
 		$month = $MONTHNAMETOMONTH{$month};
@@ -1163,14 +1163,14 @@ sub ExtractNormalDate
 	# Cal DD hh:mm Zone YYYY
 	$EXTRACTTIMEFORMAT = "Cal_DD_hh:mm_Zone_YYYY";
 	$w = $date;
-#	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[: ]+\d{1,2})(.*)$%\1 \2 \3 \4% ) {
-	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[:]+\d{1,2})(.*)$%\1 \2 \3 \4% ) {
+#	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[: ]+\d{1,2})(.*)$%$1 $2 $3 $4% ) {
+	if ( $w =~ s%^.*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ ]+(\d{1,2})[ ]+(\d{1,2}[:]+\d{1,2})(.*)$%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, 0, "" );
 		( $month, $day, $hour, $min, $year ) = split( "[/: ]+", $w );
 		if ( $year !~ /\d/ ) {
 			( $dummy1, $dummy2, $dummy3, $dummy4, $tz, $year ) = split( "[/: ]+", $w );
-			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/\1/;
+			$tz =~ s/[^0-9A-Z]*([A-Z]+).*/$1/;
 			$tz = "" if ( !defined($TZNAMETODIFFTIME{$tz}) );
 		}
 		$month = $MONTHNAMETOMONTH{$month};
@@ -1221,8 +1221,8 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "YYYY/MM/DD_PM_hh:mm";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:]+\d{1,2})%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:]+\d{1,2})%$1 $2 $3 $4 $5% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz, $meridiem ) = ( -1, -1, -1, -1, -1, -1, "", "" );
 		( $year, $month, $day, $meridiem, $hour, $min ) = split( "[/: ]+", $w );
@@ -1257,9 +1257,9 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "YYYY/MM/DD_hh:mm_PM";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4 \5% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4 \5% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4 \5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4 $5% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4 $5% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4 $5% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz, $meridiem ) = ( -1, -1, -1, -1, -1, -1, "", "" );
 		( $year, $month, $day, $hour, $min, $meridiem ) = split( "[/: ]+", $w );
@@ -1294,9 +1294,9 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "YYYY/MM/DD_hh:mm";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3 \4% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3 \4% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})%\1 \2 \3 \4% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3 $4% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3 $4% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $year, $month, $day, $hour, $min ) = split( "[/: ]+", $w );
@@ -1329,9 +1329,9 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "MM/DD_hh:mm:ss";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})%\1 \2 \3% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})%\1 \2 \3% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})%\1 \2 \3% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})%$1 $2 $3% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2}[: ]+\d{1,2})%$1 $2 $3% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2}[:]+\d{1,2})%$1 $2 $3% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $month, $day, $hour, $min, $sec ) = split( "[/: ]+", $w );
@@ -1366,8 +1366,8 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "MM/DD_PM_hh:mm";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3 \4% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:]+\d{1,2})%\1 \2 \3 \4% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3 $4% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:]+\d{1,2})%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz, $meridiem ) = ( -1, -1, -1, -1, -1, -1, "", "" );
 		( $month, $day, $meridiem, $hour, $min ) = split( "[/: ]+", $w );
@@ -1404,9 +1404,9 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "MM/DD_hh:mm_PM";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})[\.\-/ ]+([AP]M)%\1 \2 \3 \4% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})[\.\-/ ]+([AP]M)%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz, $meridiem ) = ( -1, -1, -1, -1, -1, -1, "", "" );
 		( $month, $day, $hour, $min, $meridiem ) = split( "[/: ]+", $w );
@@ -1444,9 +1444,9 @@ sub ExtractNormalDate
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
  print DEBUGOUT "$w\n" if ($DEBUG);
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3% ) {
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})%\1 \2 \3% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})%\1 \2 \3% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[: ]+\d{1,2})%$1 $2 $3% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:]+\d{1,2})%$1 $2 $3% ) {
  print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $month, $day, $hour, $min ) = split( "[/: ]+", $w );
@@ -1481,7 +1481,7 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "MM/DD_pm_hh:";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:])%\1 \2 \3 \4% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+([AP]M)[\.\-/ ]+(\d{1,2}[:])%$1 $2 $3 $4% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz, $meridiem ) = ( -1, -1, -1, -1, -1, -1, "", "" );
 		( $month, $day, $meridiem, $hour ) = split( "[/: ]+", $w );
@@ -1519,8 +1519,8 @@ sub ExtractNormalDate
 	$EXTRACTTIMEFORMAT = "MM/DD_hh:";
 	$w = " $date";
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[:])%\1 \2 \3% ) {
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:])%\1 \2 \3% ) {
+#	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2}[:])%$1 $2 $3% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})[^\d]+(\d{1,2}[:])%$1 $2 $3% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $month, $day, $hour ) = split( "[/: ]+", $w );
@@ -1555,9 +1555,9 @@ sub ExtractNormalDate
 	# YYYY/MM/DD
 	$EXTRACTTIMEFORMAT = "YYYY/MM/DD";
 	$w = " $date";
-	$w =~ s%(\d\d\d\d)(\d\d)(\d\d)% \1 \2 \3 /%g;
+	$w =~ s%(\d\d\d\d)(\d\d)(\d\d)% $1 $2 $3 /%g;
 	$w =~ s%[^0-9\/\:\.\+\-A-Za-z]+% %g;
-	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})%\1 \2 \3% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{2,4})[\.\-/ ]+(\d{1,2})[\.\-/ ]+(\d{1,2})%$1 $2 $3% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $year, $month, $day ) = split( "[/: ]+", $w );
@@ -1587,10 +1587,10 @@ sub ExtractNormalDate
 
 	# MM/DD
 	$EXTRACTTIMEFORMAT = "MM/DD";
-	$w =~ s%(\d\d)(\d\d)% \1 \2 /%g;
+	$w =~ s%(\d\d)(\d\d)% $1 $2 /%g;
 	$w = " $date";
 	$w =~ s%[^0-9\.\+\-A-Za-z\/\:]+% %g;
-	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})%\1 \2% ) {
+	if ( $w =~ s%^.*[^\d]+(\d{1,2})[\.\-/ ]+(\d{1,2})%$1 $2% ) {
 # print DEBUGOUT "$w\n" if ($DEBUG);
 		( $year, $month, $day, $hour, $min, $sec, $tz ) = ( -1, -1, -1, -1, -1, -1, "" );
 		( $month, $day ) = split( "[/: ]+", $w );
@@ -2003,7 +2003,7 @@ sub ParseRSS
  print DEBUGOUT "\nFound Item: \[$ana_rdfabout\]\n" if ($DEBUG);
 			}
 			$rdfabout = $ana_rdfabout;
-			$rdfabout =~ s/^.*<(channel|item)[ \t]+rdf:about=\"([^\"]*)\".*$/\2/;
+			$rdfabout =~ s/^.*<(channel|item)[ \t]+rdf:about=\"([^\"]*)\".*$/$2/;
 			$rdfabout = &ExtractNormalURI( $rdfabout );
 			if ( $rdfabout =~ m/^http:/ ) {
  print DEBUGOUT "Found URI: \[$rdfabout\]\n" if ($DEBUG);
@@ -2061,7 +2061,7 @@ sub ParseRSS
  print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
 						if ( $link eq "" ) {
 							$link = $ana_link;
-							$link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+							$link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#$1#;
 							$link = &ExtractNormalURI( $link );
 						}
 						if ( $founditem == 1 ) {
@@ -2079,7 +2079,7 @@ sub ParseRSS
  print DEBUGOUT "Found title: \[$ana_title\]\n" if ($DEBUG);
 						if ( $title eq "" ) {
 							$title = $ana_title;
-							$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#\1#;
+							$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#$1#;
 						}
 					}
 					if ( /<dc:publisher>/ ) {
@@ -2092,7 +2092,7 @@ sub ParseRSS
  print DEBUGOUT "Found dc:publisher: \[$ana_dcpublisher\]\n" if ($DEBUG);
 						if ( $publisher eq "" ) {
 							$publisher = $ana_dcpublisher;
-							$publisher =~ s#^.*<dc:publisher>[ \t]*(.*)[ \t]*</dc:publisher>.*$#\1#;
+							$publisher =~ s#^.*<dc:publisher>[ \t]*(.*)[ \t]*</dc:publisher>.*$#$1#;
 						}
 					}
 					if ( /<dc:creator>/ ) {
@@ -2105,7 +2105,7 @@ sub ParseRSS
  print DEBUGOUT "Found dc:creator: \[$ana_dccreator\]\n" if ($DEBUG);
 						if ( $creator eq "" ) {
 							$creator = $ana_dccreator;
-							$creator =~ s#^.*<dc:creator>[ \t]*(.*)[ \t]*</dc:creator>.*$#\1#;
+							$creator =~ s#^.*<dc:creator>[ \t]*(.*)[ \t]*</dc:creator>.*$#$1#;
 						}
 					}
 				}
@@ -2263,7 +2263,7 @@ sub ParseRSS2
 					$ana_link .= $_;
 				}
  print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
-				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#$1#;
 				$link = &ExtractNormalURI( $ana_link );
 				$channel_links[$n_channel_links++] = $link;
 			}
@@ -2277,7 +2277,7 @@ sub ParseRSS2
  print DEBUGOUT "Found title: \[$ana_title\]\n" if ($DEBUG);
 				if ( $title eq "" ) {
 					$title = $ana_title;
-					$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#\1#;
+					$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#$1#;
 				}
 			}
 			if ( $line =~ m/<pubDate.*>/ ) {
@@ -2291,7 +2291,7 @@ sub ParseRSS2
  print DEBUGOUT "Found pubDate: \[$ana_pubdate\]\n" if ($DEBUG);
 				if ( $pubdate_header eq "" ) {
 					$pubdate_header = $ana_pubdate;
-					$pubdate_header =~ s#^.*<pubDate>[ \t]*(.*)[ \t]*</pubDate>.*$#\1#;
+					$pubdate_header =~ s#^.*<pubDate>[ \t]*(.*)[ \t]*</pubDate>.*$#$1#;
 					$date = &ExtractNormalDate( $pubdate_header, $IGNORETIME );
  print DEBUGOUT "updated newer Last-Modified.\n" if ($DEBUG);
 					$lmdate = $date;
@@ -2310,7 +2310,7 @@ sub ParseRSS2
 					$ana_link .= $_;
 				}
  print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
-				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#$1#;
 				$link = &ExtractNormalURI( $ana_link );
 				$channel_links[$n_channel_links++] = $link;
 			}
@@ -2694,7 +2694,7 @@ sub ParseDocumentLocal
 
 		next if ( $foundlmd );
 		$restline = $_;
-		&jcode'convert( *restline, 'euc' );
+		jcode::convert( \$restline, 'euc' );
 		$l = $LINEFOLDLEN;
 		while ( $l > 0 ) {
 			$l = index( $restline, "<", $LINEFOLDLEN );
@@ -3167,7 +3167,7 @@ sub Print_WDBDISPHTML
 <FORM ACTION="$DISP_PL" METHOD="POST">
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 #------
@@ -3177,7 +3177,7 @@ EOF
 <SELECT NAME="DIRECT" SIZE="5">
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 	for ( $i=0; $i<$DPLNO; $i++ ) {
@@ -3185,7 +3185,7 @@ EOF
 		$selected = "";
 		$selected = " selected" if ( $DPL[$i] eq $direct );
 		$s = "<OPTION VALUE=\"$DPL[$i]\"$selected>$DP{$DPL[$i],'TITLE'} ¡Ê$DP{$DPL[$i],'AUTHOR'}¡Ë\n";
-		&jcode'convert( *s, 'jis' );
+		jcode::convert( \$s, 'jis' );
 		print "$s";
 	}
 
@@ -3243,7 +3243,7 @@ PASS   :<INPUT TYPE="password" NAME="directpass" SIZE="16" VALUE="$pass">
 <BR>
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 #------
@@ -3256,7 +3256,7 @@ EOF
 <SELECT NAME="REMOTE" SIZE="5">
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 	for ( $i=0; $i<$RPLNO; $i++ ) {
@@ -3264,7 +3264,7 @@ EOF
 		$selected = "";
 		$selected = " selected" if ( $RPL[$i] eq $remote );
 		$s = "<OPTION VALUE=\"$RPL[$i]\"$selected>$RP{$RPL[$i],'TITLE'}\n";
-		&jcode'convert( *s, 'jis' );
+		jcode::convert( \$s, 'jis' );
 		print "$s";
 	}
 
@@ -3297,7 +3297,7 @@ PASS   :<INPUT TYPE="password" NAME="remotepass" SIZE="16" VALUE="$pass">
 <BR>
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 #------
@@ -3309,7 +3309,7 @@ EOF
 </HTML>
 EOF
 
-	&jcode'convert( *s, 'jis' );
+	jcode::convert( \$s, 'jis' );
 	print "$s";
 
 }
