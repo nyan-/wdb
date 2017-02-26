@@ -1,0 +1,131 @@
+2001/09/11 V2.03 GORRY
+・Perl4対応修正。（thanks to SARUMARU）
+・認識時刻フォーマット追加。（thanks to SARUMARU）
+  "YYYY/MM/DD_hh:mm_PM" （2001/01/23 4:56PM）
+  "YYYY/MM/DD_PM_hh:mm"（２００１年１月２３日 午後４時５６分）
+  "MM/DD_hh:mm_PM" （01/23 4:56PM）
+  "MM/DD_PM_hh:mm"（１月２３日 午後４時５６分）
+  "MM/DD_PM_hh:"（１月２３日 午後４時）
+  "MM/DD_hh:"（１月２３日 １６時）
+
+2001/07/11 V2.02 GORRY
+・WDBファイルのパラメータに": "が入っているとそれ以降の文字列が切れるバグを修正。
+
+2001/05/17 V2.01 GORRY
+・GETで採ったドキュメントに"^HINA/2.[0-9]$"がある場合のhina.di処理時に、
+  既存情報をクリアしないバグを修正。
+
+2000/10/19 V2.00 GORRY
+・朝日奈アンテナ meta data format version 2.2 (HINA/2.2) document 0.9に準拠。
+・従来のLast-Modified-Detectedの役目「現在の更新時刻を最初に検知した時刻」を
+  X-First-Modified-Detectに移行させ、Last-Modified-Detectedは
+ 「最後に更新時刻を確認した時刻」とした。
+・異なる情報源のTitle・Author-Name・Keywordを混ぜないようにした。
+
+2000/05/26 V1.15 GORRY
+・X-WDB-Title・X-WDB-Author-Nameを出力するよう変更。
+・GETしたものについて、<TITLE></TITLE>・<META NAME="AUTHOR">を
+  解析してTitle・Author-Nameを抽出するよう変更。
+・$HTTP_REMOTE_TIMEOUTを追加。
+・hina.diのparse時に、nodelistを捨て損なうために前ブロックの
+  データを持ち越してしまうことがあるバグを修正。
+
+2000/01/12 V1.14 GORRY
+・Purveyor（"Purveyor / v1.2 Windows NT"）をクエリ不可httpdとして追加。
+・sample*をsample/へ移動。
+
+2000/01/05 V1.13 GORRY
+・"1-Jan-0"形式の日付に対応。
+・"2000年 01月 06日"のような日付を読みとれるよう修正。
+
+2000/01/03 V1.12 GORRY
+・HINA/2.1に対応。
+
+1999/12/31 V1.11 GORRY
+・1999/12/31を2000/01/01と誤認するバグを修正。
+
+1999/11/04 V1.10 GORRY
+・URIのポート番号を認識しないバグを修正。
+
+1999/09/29 V1.09 GORRY
+・V1.08での
+  ・「1980/01/01 00:00:00 GMT」の時刻データを無視するよう変更。
+  を元に戻したうえで、新たに作業をし直した。
+・sample_dance.plのセミコロン忘れを修正。
+・sample_dance.shのsample_dance.pl出力文字コードをEUCからShift-JISに変更。
+・一部の*.plを*.cgiにした。
+
+1999/09/28 V1.08 GORRY
+・検索結果行に更新時刻が検知されなかったとき、次の行の
+  調査を行なわないバグを修正。
+・年号のない更新日を去年と判定するバグを修正。
+・Print_HINATXT()・Print_HINADI()において、
+  自己取得したデータのみを出力するモードを追加。
+・「1980/01/01 00:00:00 GMT」の時刻データを無視するよう変更。
+・OVERALLモードに「uniqする／しない」モードを新設。
+・sample_disp.htmlをsample_disp.shtmlに変更。
+
+1999/09/22 V1.07 GORRY
+・$HINA_HTML_FORMATの置換文字に"%E"を追加。
+・$HINA_NOERRORMARKを追加。
+
+1999/09/16 V1.06 GORRY
+・gmtime()・localtime()の$yearが年でなく「1900年からの
+  経過年数」であることに起因するY2K問題に対処。
+・タイムゾーンの"+0030"の項を修正。
+
+1999/09/10 V1.05 GORRY
+・splitの":[ \t]+"をsplitの":[ \t]*"に変更。
+・BuildRemoteDI()・BuildDirectDI()の引数処理ミスを修正。
+・hina.diのヘッダに"Date:"・"Content-Type:"を出力するようにした。
+・検索キーに".*"を付けたときに正しく切り取らないバグを修正。
+HEAD取得の時の検索キーを"Last-Modified:"(case insensitive)に
+  変更した。
+・Last-Modified-Detectedあたりの判定を変更。
+
+1999/09/08 V1.04 GORRY
+・fragmentを含んだURIを正しく処理しないバグを修正。
+・%dance$$.downは存在時のみ削除するよう変更。
+・hina.diの判定をcase insensitiveに変更。
+・REMOTEでの「Authorized-url:」判定を外した。
+  つまり、REMOTEは外部をアクセスしない。
+・ExtractNormalURI()はURIが２つ以上含まれる場合に最右でなく最左を
+  取り出すようにした。
+・$EXTRACTTIMEFORMATに、最後に変換した時刻フォーマットを
+  残すようにした。これがX-Time-Formatに記録される。
+・年号なしの日付を更新時刻として採れるようにした。
+・検索キーに".*"を付け、前後を切り取れるように変更。
+・512バイト以上の行は分割してキー検索するよう変更。
+・タイムゾーンを追加。
+
+1999/08/27 V1.03 GORRY
+・ステータス-200が出るべきときに出ないバグを修正。
+・ターゲット取得でタイムアウトになったときも更新時刻検索を
+  行なうよう変更。
+・%dance.downへのロードを%dance$$.downへ行なうよう変更。
+・DEBUGOUTを開く位置を変更、CloseDebugFile()を追加。
+・hauNikki DI対応。
+・sample_dance.plの$HINA_HTML_FORMATバグ修正。
+
+1999/08/26 V1.02 GORRY
+・負の値となる日付が出力されるバグを修正。
+
+1999/08/25 V1.01 GORRY
+・hina.txtからリモート取得したときにX-No-Time-In-Contentsが強制的に
+  削除されるのを「updateが検出されたときのみ削除」に変更。
+
+・hina.diで出力される時刻情報をRFC1123(=822)仕様に合わせるよう変更。
+
+・hina.txtのExpire:をhina.txtそのものの更新時刻から導くよう
+  仕様追加。
+
+・タイムアウトのエラー検出ミスを修正。
+
+・-200を「更新時刻が検知できない」エラーとして規定、hina.txtに
+  "<!--HINA_NOT_DETECTED-->"を出力する。
+
+
+1999/08/22 V1.00 GORRY
+・公開。
+
+[EOF]

@@ -1,0 +1,25 @@
+REMOTE:		yourantenna
+URI:		http://www.yourserver.net/wdb/
+TITLE:		MYSELF
+AUTHOR:		MYSELF
+VIRTUAL:		../hina.di
+MARK:		s
+SAVEAS:		myself.hr
+
+REMOTE:		sdb
+URI:		http://na01.shonan.ne.jp/~gorry/hina/
+TITLE:		SDB
+AUTHOR:		GORRY
+VIRTUAL:		http://na01.shonan.ne.jp/~gorry/hina/hina.di
+MARK:		a
+SAVEAS:		sdb.hr
+
+PAGE:		gorry
+URI:		http://na01.shonan.ne.jp/~gorry/diary/digestdiary.html
+TITLE:		なびろぐ
+AUTHOR:		GORRY
+VIRTUAL:		http://na01.shonan.ne.jp/~gorry/diary/digestdiary.antenna
+METHOD:		HEAD
+COMMENT:		
+KEY:		
+
