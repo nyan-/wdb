@@ -878,6 +878,7 @@ sub CaseLowerDomainNameURI
 # print DEBUGOUT "CaseLowerDomainNameURI( $uri ):\n" if ($DEBUG);
 	$uri =~ s%(https?://[^/]*)%\L$1\E%i;
 	$uri =~ s:/$::;
+	$uri =~ s:\?fm=rss$::;
 # print DEBUGOUT "to: $uri\n" if ($DEBUG);
 	return ($uri);
 }
@@ -2392,6 +2393,7 @@ sub ParseRSS2
 
  print DEBUGOUT "\nFounded channels:\n" if ($DEBUG);
 	for ( $i=0; $i<$n_channel_links; $i++ ) {
+	        $channel_links[$i]  =~ s|http://rdsig.yahoo.co.jp/rss/l/blog/myblog/rss2/url/\*||;
 		printf( DEBUGOUT " %s\n", $channel_links[$i] ) if ($DEBUG);
 		$dpl = $URI2PAGENAME{&CaseLowerDomainNameURI($channel_links[$i])};
 		if ( $DP{ $dpl, "URI" } ne "" ) {
@@ -2402,6 +2404,15 @@ sub ParseRSS2
 				$DP{ $dpl, "X-Time-Format" } = "RSS";
 			}
 		}
+	}
+
+	## because Yahoo blog uses external url link
+	if ( $DP{ $dpl, "URI" } eq "" ) {
+	    $dpl = $tempdpl;
+	    $DP{ $dpl, "URI"} = $tempURI;
+	    $DP{ $dpl, "Last-Modified" } = $lmdate;
+	    $DP{ $dpl, "X-Result-Method" } = "RSS";
+	    $DP{ $dpl, "X-Time-Format" } = "RSS";
 	}
 
  printf ( DEBUGOUT "\nParseHinaTxt() = %d sec.\n", time-$starttime ) if ($DEBUG);
@@ -2666,6 +2677,8 @@ sub ParseDocumentLocal
 					undef $DP{ $dpl, "X-VirtualURI" };
 					$DP{ $dpl, "Last-Modified" } = "";
 					$DP{ $dpl, "X-Time-Format" } = $_;
+					$tempURI = $DP{ $dpl, "URI" };
+					$tempdpl = $dpl;
 					&ParseRSS2( $pagename, $infile, 0 );
 					return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
 					return (1);
