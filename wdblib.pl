@@ -2994,6 +2994,7 @@ sub Print_HINAHTML
 	}
 
 	for ( $i=0; $i<$DPLNO; $i++ ) {
+ print DEBUGOUT "$DPL[$i]\n" if ($DEBUG);
 		$errormark = $HINA_NOERRORMARK;
 		$lastmod = $DP{$DPL[$i],"Last-Modified"};
 		if ( $DP{$DPL[$i],"X-LM-Is-FMD"} eq "1" ) {
@@ -3072,7 +3073,7 @@ sub Print_HINAHTML
 			$mark = $RP{ $DP{$DPL[$i],"X-Authorized-Pagename"}, "MARKURI" };
 			$gettime = sprintf( "%02ds", $RP{ $DP{$DPL[$i],"X-Authorized-Pagename"}, "X-GETTIME" } );
 		}
-# print DEBUGOUT "Method: $method\($mark\)\n" if ($DEBUG);
+ print DEBUGOUT "Method: $method\($mark\)\n" if ($DEBUG);
 		if ( $mark eq "" ) {
 			$mark = "-";
 		}
