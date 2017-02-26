@@ -4,6 +4,7 @@
 #### mailto: gorry@hauN.org 
 #### 
 #### History: 
+#### 2001/12/04 V2.07 $AGENTの構成方法を変更。
 #### 2001/12/02 V2.06 $HINA_VERを追加。
 #### 2000/05/22 V1.15 $HTTP_REMOTE_TIMEOUTを追加。
 #### 1999/09/21 V1.07 $HINA_HTML_FORMATに%Eを追加。
@@ -24,7 +25,7 @@ $DEBUG    = 0 if ( !defined( $DEBUG ) );
 $DEBUGOUT = "WDB.debug" if ( !defined( $DEBUGOUT ) );
 $DIOUT    = "WDB.di" if ( !defined( $DIOUT ) );
 $HINAOUT  = "WDB.hina" if ( !defined( $HINAOUT ) );
-$AGENT_COMMENT = " (WWW-Dancing-Bee; )" if ( !defined( $AGENT_COMMENT ) );
+$AGENT_COMMENT = "WWW-Dancing-Bee" if ( !defined( $AGENT_COMMENT ) );
 $HTTP_TIMEOUT = 10 if ( !defined( $HTTP_TIMEOUT ) );
 $HTTP_REMOTE_TIMEOUT = 30 if ( !defined( $HTTP_REMOTE_TIMEOUT ) );
 $DEFAULT_EXPIRETIME = 6 if ( !defined( $DEFAULT_EXPIRETIME ) );
@@ -40,10 +41,10 @@ $JCODE = "euc";
 $MAILCMD = "nkf -j | mail -s \"\@\@WDB-POSTMAIL\"" if ( !defined( $MAILCMD ) );
 
 # エージェント設定 
-$AGENT_NAME    = "WDB";
-$AGENT_VER     = "2.06";
-$AGENT         = "$AGENT_NAME/$AGENT_VER$AGENT_COMMENT";
 $HINA_VER      = "HINA/2.2beta";
+$AGENT_NAME    = "WDB";
+$AGENT_VER     = "2.07";
+$AGENT         = "$AGENT_NAME/$AGENT_VER (Antenna; $HINA_VER; $AGENT_COMMENT)";
 
 # ソケット設定 
 $AF_INET = 2;

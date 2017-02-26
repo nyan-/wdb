@@ -1,9 +1,14 @@
 #!/usr/local/bin/perl
-#### ◇WDB用ライブラリ 「WDBLIB」 V2.06
+#### ◇WDB用ライブラリ 「WDBLIB」 V2.07
 #### Copyright 1999-2001 GORRY. 
 #### mailto: gorry@hauN.org 
 #### 
 #### History: 
+#### 2001/12/09 V2.07 ・リモートでhina-diを読み込んだとき、Hina-Versionを書き換えて
+####                    しまうバグを修正。
+####                  ・If-Modified-Since:に対応。
+####                  ・リクエスト時にAccept-Encoding: gzip, x-gzipを付けるようにした。
+####                  ・gif・jpeg・pngのイメージサイズを取得できるようにした。
 #### 2001/11/28 V2.06 ・Virtualで取得したHTMLからメタ情報収集を行わないようにした。
 ####                  ・hina.diにhina-2.2beta準拠全フィールドを出力するようにした。
 ####                  ・hina.diの読み込み時にLast-Modified-Detectedフィールドがない
@@ -1496,6 +1501,7 @@ sub ParseHinaTxt
 	local( $author );
 	local( $fmddate );
 	local( $date );
+	local( $starttime ) = time;
 
  print DEBUGOUT "ParseHinaTxt( $pagename, $infile ):\n" if ($DEBUG);
 
@@ -1622,9 +1628,11 @@ if (0) {
 				}
 }
 				$DP{$dpl,"X-Result-Method"} = "REMOTE";
+				$DP{ $dpl, "HINA-Version"} = $HINA_VER;
 			}
 		}
 	}
+ printf ( DEBUGOUT "ParseHinaTxt() = %d sec.\n", time-$starttime ) if ($DEBUG);
 }
 
 
@@ -1645,6 +1653,7 @@ sub ParseHinaDI
 	local( $lmdate );
 	local( $date );
 	local( %nodelist );
+	local( $starttime ) = time;
 
  print DEBUGOUT "ParseHinaDI( $pagename, $infile, $onremote ):\n" if ($DEBUG);
 
@@ -1669,7 +1678,7 @@ sub ParseHinaDI
 
 			$lmddate = "";
  #			$lmddate = $NOWTIME;
-printf( DEBUGOUT "lmddate: [%s] [%s] [%s] [%s] -> ", $NOWTIME, $nodelist{ "#HEADER", "Date" }, $nodelist{ "Date" }, $nodelist{ "Last-Modified-Detected" } ) if ($DEBUG);
+# printf( DEBUGOUT "lmddate: [%s] [%s] [%s] [%s] -> ", $NOWTIME, $nodelist{ "#HEADER", "Date" }, $nodelist{ "Date" }, $nodelist{ "Last-Modified-Detected" } ) if ($DEBUG);
 #			$date = &ExtractNormalDate( $nodelist{ "#HEADER", "Date" }, $IGNORETIME );
 #			$lmddate = $date if ( $date ne $ERRTIME );
 #			$date = &ExtractNormalDate( $nodelist{ "Date" }, $IGNORETIME );
@@ -1734,7 +1743,7 @@ printf( DEBUGOUT "lmddate: [%s] [%s] [%s] [%s] -> ", $NOWTIME, $nodelist{ "#HEAD
 					$DP{ $dpl, "Authorized-url" } = &NormalURI( $nodelist{ "Authorized-url" } );
 					$DP{ $dpl, "Expire" } = &ExtractNormalDate( $nodelist{ "Expires" }, $FUTURETIME );
 					$DP{ $dpl, "Expire" } = &ExtractNormalDate( $nodelist{ "Expire" }, $FUTURETIME ) if ( $DP{ $dpl, "Expire" } lt $EXPIRETIME );
-					$DP{ $dpl, "Expire" } = $EXPIRETIME if ( $DP{ $dpl, "Expire" } lt $EXPIRETIME );
+#					$DP{ $dpl, "Expire" } = $EXPIRETIME if ( $DP{ $dpl, "Expire" } lt $EXPIRETIME );
 					$DP{ $dpl, "Expires" } = $DP{ $dpl, "Expire" };
 
 					if ( $update == 1 ) {
@@ -1778,6 +1787,89 @@ printf( DEBUGOUT "lmddate: [%s] [%s] [%s] [%s] -> ", $NOWTIME, $nodelist{ "#HEAD
 			}
 		}
 	}
+ printf ( DEBUGOUT "ParseHinaDI() = %d sec.\n", time-$starttime ) if ($DEBUG);
+	return (0);
+}
+
+########################################################################
+### イメージファイル解析 
+## SUCCESS = ParseImage( PAGENAME, INFILENO )
+#
+sub ParseImage
+{
+	local( $pagename ) = shift;
+#	local( FIN ) = shift; # dummy
+	local( $dpl );
+	local( $buf );
+	local( @b );
+	local( $type );
+	local( $len );
+
+ print DEBUGOUT "ParseImage( $pagename, FIN ):\n" if ($DEBUG);
+
+	$dpl = $pagename;
+
+	if ( $DP{ $dpl, "Content-Type" } =~ "image\/gif" ) {
+print DEBUGOUT "Read GIF:\n" if ($DEBUG);
+		read( FIN, $buf, 16 );
+		@b = unpack( "CCCCCCCCCCCCCCCC", $buf );
+ printf DEBUGOUT ( "Check Width: %02X %02X %02X %02X\n", $b[6], $b[7], $b[8], $b[9] ) if ($DEBUG);
+		$DP{ $dpl, "Image-Width" }  = $b[6]+$b[7]*256;
+		$DP{ $dpl, "Image-Height" } = $b[8]+$b[9]*256;
+		return (0);
+ print DEBUGOUT "Read JPEG Error\n" if ($DEBUG);
+	}
+
+	if ( $DP{ $dpl, "Content-Type" } =~ "image\/jpeg" ) {
+ print DEBUGOUT "Read JPEG:\n" if ($DEBUG);
+		read( FIN, $buf, 2 );
+		while ( read( FIN, $buf, 1 ) == 1 ) {
+			@b = unpack( "C", $buf );
+# printf DEBUGOUT ( "Check Mark: %02X\n", $b[0] ) if ($DEBUG);
+			if ( $b[0] == 0xff ) {
+				read( FIN, $buf, 3 );
+				@b = unpack( "CCC", $buf );
+# printf DEBUGOUT ( "Check Type: %02X %02X %02X\n", $b[0], $b[1], $b[2] ) if ($DEBUG);
+				$type = $b[0];
+				$len = $b[1]*256+$b[2];
+				read( FIN, $buf, $len-2 );
+				if ( ($type == 0xc0) || ($type == 0xc2) ) {
+					@b = unpack( "CCCCC", $buf );
+ printf DEBUGOUT ( "Check Width: %02X %02X %02X %02X\n", $b[0], $b[1], $b[2], $b[3] ) if ($DEBUG);
+					$DP{ $dpl, "Image-Height" }  = $b[1]*256+$b[2];
+					$DP{ $dpl, "Image-Width" } = $b[3]*256+$b[4];
+					return (0);
+				}
+			}
+		}
+ print DEBUGOUT "Read JPEG Error\n" if ($DEBUG);
+	}
+
+	if ( $DP{ $dpl, "Content-Type" } =~ "image\/(x-|)png" ) {
+ print DEBUGOUT "Read PNG:\n" if ($DEBUG);
+		read( FIN, $buf, 2 );
+		while ( read( FIN, $buf, 1 ) == 1 ) {
+			@b = unpack( "C", $buf );
+# printf DEBUGOUT ( "Check Mark: %02X\n", $b[0] ) if ($DEBUG);
+			if ( $b[0] == 0x49 ) {
+				read( FIN, $buf, 3 );
+				@b = unpack( "CCC", $buf );
+# printf DEBUGOUT ( "Check Type: %02X %02X %02X\n", $b[0], $b[1], $b[2] ) if ($DEBUG);
+				$type = $b[0]*65536+$b[1]*256+$b[2];
+				if ( ($type == 0x484452) ) {
+					read( FIN, $buf, 8 );
+					@b = unpack( "CCCCCCCC", $buf );
+ printf DEBUGOUT ( "Check Width: %02X %02X %02X %02 %02X %02X %02X %02X\n", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7] ) if ($DEBUG);
+					$DP{ $dpl, "Image-Width" }  = $b[0]*0x1000000+$b[1]*0x10000+$b[2]*0x100+$b[3];
+					$DP{ $dpl, "Image-Height" } = $b[4]*0x1000000+$b[5]*0x10000+$b[6]*0x100+$b[7];
+					return (0);
+				}
+			}
+		}
+ print DEBUGOUT "Read PNG Error\n" if ($DEBUG);
+	}
+
+	return (1);
 }
 
 ########################################################################
@@ -1811,11 +1903,31 @@ sub ParseDocumentLocal
 	local( $date );
 	local( $lmddate );
 	local( $fmddate );
+	local( $nonkf ) = 0;
+	local( $isimage ) = 0;
 
  print DEBUGOUT "ParseDocumentLocal( $pagename, $infile, $method ):\n" if ($DEBUG);
 
 	$dpl = $pagename;
+
 	$key = $DP{ $dpl, "KEY" };
+
+	if ( $DP{ $dpl, "Content-Type" } =~ "image/gif" ) {
+		$nonkf = !0;
+		$isimage = !0;
+		$key = "";
+	}
+	if ( $DP{ $dpl, "Content-Type" } =~ "image/jpeg" ) {
+		$nonkf = !0;
+		$isimage = !0;
+		$key = "";
+	}
+	if ( $DP{ $dpl, "Content-Type" } =~ "image/(x-|)png" ) {
+		$nonkf = !0;
+		$isimage = !0;
+		$key = "";
+	}
+
 	if ( $key eq "" ) {
 		$key = "[Ll][Aa][Ss][Tt]";
 	}
@@ -1823,6 +1935,7 @@ sub ParseDocumentLocal
 		$key = "[Ll][Aa][Ss][Tt]\-[Mm][Oo][Dd][Ii][Ff][Ii][Ee][Dd]\:";
 	}
  print DEBUGOUT "\$key = $key\n" if ($DEBUG);
+
 	$DP{ $dpl, "Method" } .= "/" if ( $DP{ $dpl, "Method" } ne "" );
 	$DP{ $dpl, "Method" } .= $method;
 	$DP{ $dpl, "X-ResultStatus" } = -200 if ( $DP{ $dpl, "X-ResultStatus" } eq -101 );
@@ -1832,8 +1945,13 @@ sub ParseDocumentLocal
 	undef $author;
 	$foundlmd = 0;
 	$firstline = !0;
-	open( FIN, "$NKF $infile|" ) || die "cannot open [$NKF $infile|].";;
+	if ( $nonkf ) {
+		open( FIN, "$infile" ) || die "cannot open [$NKF $infile|].";;
+	} else {
+		open( FIN, "$NKF $infile|" ) || die "cannot open [$NKF $infile|].";;
+	}
 	while (<FIN>) {
+		s/[\012\015]+//g;
 # print DEBUGOUT "$_\n" if ($DEBUG);
 		if ( $firstline ) {
 			$firstline = 0;
@@ -1841,6 +1959,20 @@ sub ParseDocumentLocal
 				@a = split( ' ' );
 				if ( $a[1] == 200 ) {
 					# success 
+				} elsif ( $a[1] == 304 ) {
+					# not modified 
+					$DP{ $dpl, "Date" } = $NOWTIME;
+					$DP{ $dpl, "Last-Modified-Detected" } = $NOWTIME;
+					$DP{ $dpl, "Authorized" } = $AGENT;
+					$DP{ $dpl, "X-Authorized-Pagename" } = $pagename;
+					$DP{ $dpl, "Authorized-url" } = $ANTENNA_URI;
+					$DP{ $dpl, "X-ResultStatus" } = 200;
+					$DP{ $dpl, "X-Hop" } = "0";
+					$DP{ $dpl, "Expire" } = $EXPIRETIME;
+					$DP{ $dpl, "Expires" } = $EXPIRETIME;
+					$DP{ $dpl, "X-Result-Method" } = $method;
+					$DP{ $dpl, "HINA-Version"} = $HINA_VER;
+					return (1);
 				} elsif ( $a[1] == 404 ) {
 					# not found 
 					$DP{ $dpl, "X-ResultStatus" } = $a[1];
@@ -1853,7 +1985,6 @@ sub ParseDocumentLocal
 				}
 			}
 		}
-		s/[\012\015]+//;
 		if ( $_ eq '' ) {
 			$isbody = !0;
 		}
@@ -1861,6 +1992,12 @@ sub ParseDocumentLocal
 			( $tag, $param ) = split( ': ' );
 			$header{ $tag } = $param;
 		} else {
+			if ( $isimage ) {
+				&ParseImage( $pagename, FIN );
+				close( FIN );
+				return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+				return (1);
+			}
 			if ( m:^HINA/2.[0-9]: ) {
 				close( FIN );
 				$URI2PAGENAME{ &CaseLowerDomainNameURI( $DP{ $dpl, "URI" } ) } = $dpl;
@@ -1870,11 +2007,13 @@ sub ParseDocumentLocal
 				undef $DP{ $dpl, "X-VirtualURI" };
 				$DP{ $dpl, "Last-Modified" } = "";
 				$DP{ $dpl, "X-Time-Format" } = $_;
-				return ( &ParseHinaDI( $pagename, $infile, 0 ) );
+				&ParseHinaDI( $pagename, $infile, 0 );
+				return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+				return (1);
 			}
 			if ( $DP{ $dpl, "X-VirtualURI" } eq "" ) {
 				if ( /\<title\>(.*)\<\/title\>/i ) {
-				$title = $1;
+					$title = $1;
  print DEBUGOUT "TITLE($title) found: $_\n" if ($DEBUG);
 				}
 				if ( /\<meta[ \t]*name[ \t]*=[ \t]*\"author\"[ \t]*content[ \t]*=[ \t]*\"([^"]*)"/i ) {
@@ -1970,6 +2109,7 @@ sub ParseDocumentLocal
 				$DP{ $dpl, "Expire" } = $EXPIRETIME;
 				$DP{ $dpl, "Expires" } = $EXPIRETIME;
 				$DP{ $dpl, "X-Result-Method" } = $method;
+				$DP{ $dpl, "HINA-Version"} = $HINA_VER;
 				$foundlmd = !0;
 			}
 		}
@@ -2091,7 +2231,6 @@ sub Print_HINADI
 		if ( &DateToClock( $DP{$DPL[$i],'Date'} ) == 0 ) {
 			$DP{$DPL[$i],'Date'} = $NOWTIME;
 		}
-		$DP{$DPL[$i],'HINA-Version'} = $HINA_VER;
 		foreach $cmdname ( @HINADI_CMDNAMELIST ) {
 			last if ( $cmdname =~ /TERMINATE/ );
 			$data = $DP{$DPL[$i],$cmdname};
@@ -2597,6 +2736,13 @@ sub ClockToDate2
 	return ($s);
 }
 
+sub ClockToDate3
+{
+	local( $year, $month, $day, $hour, $min, $sec, $mday ) = &ClockToDateCore( shift );
+	local( $s ) = sprintf( "%s, %02d %s %d %02d:%02d:%02d", $MDAY[$mday], $day, $MONTH[$month-1], $year, $hour, $min, $sec );
+	return ($s);
+}
+
 sub ClockToDateCore
 {
 	local( $clock ) = shift;
@@ -2665,12 +2811,23 @@ sub DownloadRemoteFileHTTP
 	local( $saveas ) = shift;
 	local( $href );
 	local( $dpl );
-	local( $staus );
+	local( $status );
 	local( $gettime );
 	local( $uri );
+	local($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+          $atime,$mtime,$ctime,$blksize,$blocks) = stat($saveas);
+	local( $modified );
+	local( $tmpsaveas ) = "\%$saveas.$$";
+	local( $httpstatus );
+	local( $contenttype );
 
 	$HTTP_REMOTE_TIMEOUT = 30 if ( !defined( $HTTP_REMOTE_TIMEOUT ) );
 	$HTTP_TIMEOUT_G = $HTTP_REMOTE_TIMEOUT;
+
+	if ( $mtime > 0 ) {
+		local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime( $mtime );
+		$modified = sprintf( "%04d/%02d/%02d %02d:%02d:%02d", $year+1900, $mon+1, $mday, $hour, $min, $sec );
+	}
 
 	$rpl = $remotename;
 	$uri = $RP{ $rpl, "X-VirtualURI" };
@@ -2681,15 +2838,28 @@ sub DownloadRemoteFileHTTP
 	if ( $href =~ /[.]gz$/i ) {
 		$method .= "-GZIP";
 	}
-	( $status, $gettime ) = &DownloadHTTP( $href, $method, $saveas );
+ print DEBUGOUT "DownloadHTTP( $href, $method, $tmpsaveas, $modified )\n";
+	( $status, $gettime, $contenttype ) = &DownloadHTTP( $href, $method, $tmpsaveas, $modified );
 	$RP{ $rpl, "X-GETTIME" } = $gettime;
+	$RP{ $rpl, "Content-Type" } = $contenttype;
 	if ( $status == 0 ) {
 		# success;
+		open( REMOTEFILE, "$tmpsaveas" );
+		$httpstatus = <REMOTEFILE>;
+		close( REMOTEFILE );
+ print DEBUGOUT "REMOTEFILE: $httpstatus";
+		if ( $httpstatus !~ / 304 / ) {
+ print DEBUGOUT "rename( $tmpsaveas, $saveas )\n";
+			rename( $tmpsaveas, $saveas );
+		} else {
+ print DEBUGOUT "304 not modified : $href\n";
+		}
 	} elsif ( $status == 1 ) {
 		$RP{ $rpl, "X-ResultStatus" } = -100; # timeout 
 	} elsif ( $status == 2 ) {
 		$RP{ $rpl, "X-ResultStatus" } = -300; # http error 
 	}
+	unlink( $tmpsaveas );
 	return ( $status );
 }
 
@@ -2707,6 +2877,8 @@ sub DownloadDocumentHTTP
 	local( $staus );
 	local( $gettime );
 	local( $uri );
+	local( $modified );
+	local( $contenttype );
 
 	$HTTP_TIMEOUT_G = $HTTP_TIMEOUT;
 
@@ -2716,8 +2888,10 @@ sub DownloadDocumentHTTP
 		$uri = $DP{ $dpl, "URI" };
 	}
 	$href = &ExtractNormalURI( $uri );
-	( $status, $gettime ) = &DownloadHTTP( $href, $method, $saveas );
+	$modified = $DP{ $dpl, "Last-Modified" };
+	( $status, $gettime, $contenttype ) = &DownloadHTTP( $href, $method, $saveas, $modified );
 	$DP{ $dpl, "X-GETTIME" } = $gettime;
+	$DP{ $dpl, "Content-Type" } = $contenttype;
 	if ( $status == 0 ) {
 		# success;
 	} elsif ( $status == 1 ) {
@@ -2726,18 +2900,19 @@ sub DownloadDocumentHTTP
 	} elsif ( $status == 2 ) {
 		$DP{ $dpl, "X-ResultStatus" } = -300; # http error 
 	}
-	return ( $status );
+	return ( $status, $contenttype );
 }
 
 ########################################################################
 ### HTTPダウンロード 
-## SUCCESS = DownloadHTTP( HREF, METHOD, SAVEAS )
+## SUCCESS = DownloadHTTP( HREF, METHOD, SAVEAS, MODIFIED )
 #
 sub DownloadHTTP
 {
 	local( $href ) = shift;
 	local( $method ) = shift;
 	local( $saveas ) = shift;
+	local( $modified ) = shift;
 	local( $lmdate );
 	local( $server );
 	local( $port );
@@ -2750,10 +2925,16 @@ sub DownloadHTTP
 	local( $oldselect );
 	local( $gettime );
 	local( $getgziped );
+	local( $gziped );
 	local( $gzipreadbuf );
 	local( $gzipreadlength );
 	local( $contentlength );
+	local( $data );
 	local( $isbody ) = 0;
+	local( $readimagesize ) = 0;
+	local( $contenttype );
+	local( $readlines ) = 0;
+	local( $readbufsize ) = 1024*4;
 	local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
 
  print DEBUGOUT "DownloadHTTP():\n" if ($DEBUG);
@@ -2791,12 +2972,20 @@ sub DownloadHTTP
 	$sendstr .= "User-Agent: $AGENT\015\012";
 	$sendstr .= "Referer: $ANTENNA_URI\015\012" if ( $ANTENNA_URI ne "" );
 	$sendstr .= "Pragma: no-cache\015\012";
+	$sendstr .= "Accept-Encoding: gzip, x-gzip\015\012";
+
+	$data = &DateToClock(&ExtractNormalDate( $modified, "ZZZ" ));
+	if ( $data != 0 ) {
+		$data = &ClockToDate3( $data ) . " GMT";
+		$sendstr .= "If-Modified-Since: $data\015\012";
+	}
+
 	$sendstr .= "\015\012";
 
  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
  print DEBUGOUT sprintf( "%02d:%02d:%02d ", $hour, $min, $sec ) if ($DEBUG);
  print DEBUGOUT "access to $server:$port\n" if ($DEBUG);
- print DEBUGOUT "--\n$sendstr" if ($DEBUG);
+ print DEBUGOUT "--Send Request Header\n$sendstr\--Get Object Header\n" if ($DEBUG);
 
 	$gettime = time;
 
@@ -2828,58 +3017,72 @@ sub DownloadHTTP
 		print S "$sendstr";
 		select ( $oldselect );
 
-		if ( $getgziped ) {
-			open( SAVEAS, ">$saveas" );
-			while (<S>) {
-				s/\015\12/\012/g;
-				s/\015/\012/g;
-				s/\012$//;
-				if ( $_ eq '' ) {
-					print DEBUGOUT "--\n" if ($DEBUG);
-					last;
-				}
-				if ( $_ =~ /^Content-Length: (\d+)/i ) {
-					$contentlength = $1;
-				}
-				print SAVEAS "$_\n";
- print DEBUGOUT "$_\n" if ($DEBUG);
+		$contentlength = 0;
+		open( SAVEAS, ">$saveas" );
+		while (<S>) {
+			s/\015\12/\012/g;
+			s/\015/\012/g;
+			s/\012$//;
+			if ( $_ eq '' ) {
+				print DEBUGOUT "--Get Object Body\n" if ($DEBUG);
+				print SAVEAS "\n";
+				last;
 			}
-			close( SAVEAS );
- print DEBUGOUT "Get gzip data - $contentlength byte.\n" if ($DEBUG);
-			open( SAVEAS, "|gzip -d>>$saveas" );
+			if ( $_ =~ /^Content-Length:[ \t]+(\d+)/i ) {
+				$contentlength = $1;
+			}
+			if ( $_ =~ /^Content-Type:[ \t]+(.*)$/i ) {
+				$contenttype = $1;
+				$readimagesize = 0;
+				$readimagesize = 16 if ( $1 =~ 'image\/gif' );
+				$readimagesize = 1024 if ( $1 =~ 'image\/jpeg' );
+				$readimagesize = 1024 if ( $1 =~ 'image\/(x-|)png' );
+				# 今のところ未使用
+			}
+			if ( $_ =~ /^Content-Encoding:[ \t]+(.*)$/i ) {
+				$gziped = 0;
+				$gziped = !0 if ( $1 eq 'gzip' );
+				$gziped = !0 if ( $1 eq 'x-gzip' );
+				if ( $gziped != 0 ) {
+					$getgziped = $gziped;
+				}
+			}
+			print SAVEAS "$_\n";
+ print DEBUGOUT "$_\n" if ($DEBUG);
+		}
+		close( SAVEAS );
+		if ( ($contentlength > 0) && ($method eq "GET") ) {
+			if ( $getgziped ) {
+ print DEBUGOUT "Get gziped data - $contentlength byte.\n" if ($DEBUG);
+				open( SAVEAS, "|gzip -d>>$saveas" );
+			} else {
+ print DEBUGOUT "Get binary data - $contentlength byte.\n" if ($DEBUG);
+				open( SAVEAS, ">>$saveas" );
+			}
 			binmode( SAVEAS );
 			binmode( S );
 			while ($contentlength) {
  print DEBUGOUT "Rest: $contentlength\n" if ($DEBUG);
 				$gzipreadlength = $contentlength;
-				$gzipreadlength = 1024 if $gzipreadlength > 1024;
+				$gzipreadlength = $readbufsize if $gzipreadlength > $readbufsize;
 				$gzipreadlength = read( S, $gzipreadbuf, $gzipreadlength );
+				last if ( $gzipreadlength == 0 );
 				syswrite( SAVEAS, $gzipreadbuf, $gzipreadlength );
 				$contentlength -= $gzipreadlength;
 			}
 			close(SAVEAS);
- print DEBUGOUT "Get gzip data - complete.\n" if ($DEBUG);
+ print DEBUGOUT "Rest: 0\n" if ($DEBUG);
 		} else {
-			open( SAVEAS, ">$saveas" );
+ print DEBUGOUT "Get text data ... " if ($DEBUG);
+			open( SAVEAS, ">>$saveas" );
 			while (<S>) {
-				s/\015\12/\012/g;
-				s/\015/\012/g;
-				s/\012$//;
-				if ($DEBUG) {
-					if ( $_ eq '' ) {
-						if ( !$isbody ) {
-							print DEBUGOUT "--\n" if ($DEBUG);
-							$isbody = !0;
-						}
-					}
-					if ( !$isbody ) {
- print DEBUGOUT "$_\n" if ($DEBUG);
-					}
-				}
-				print SAVEAS "$_\n";
+				print SAVEAS "$_";
+				$readlines++;
 			}
 			close(SAVEAS);
+ print DEBUGOUT "$readlines lines.\n" if ($DEBUG);
 		}
+ print DEBUGOUT "--End of Object\n" if ($DEBUG);
 		close(S);
 		eval {
 			alarm( 0 );
@@ -2895,14 +3098,13 @@ sub DownloadHTTP
 		($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
 		print DEBUGOUT sprintf( "%02d:%02d:%02d ", $hour, $min, $sec );
 		print DEBUGOUT "ALARM $@ on $href.\n--\n";
-		return (1, $gettime) if ( $@ =~ "timeout" );
-		return (2, $gettime);
+		return (1, $gettime, $contenttype) if ( $@ =~ "timeout" );
+		return (2, $gettime, $contenttype);
 	}
 
-	return (0, $gettime);
+	return (0, $gettime, $contenttype);
 }
 
 ########################################################################
 1;
 # [EOF]
-

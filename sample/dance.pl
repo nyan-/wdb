@@ -4,6 +4,7 @@
 #### mailto: gorry@hauN.org 
 #### 
 #### History: 
+#### 2001/12/04 V2.07 $AGENT_COMMENTの構成方法を変更。
 #### 1999/09/28 V1.08 $HINA_HTML_FORMATから%sを外す。
 ####                  $HINA_NOERRORMARKを定義。
 #### 1999/09/07 V1.03 $HINA_HTML_FORMATバグ修正。
@@ -36,7 +37,7 @@ $DEBUG    = 0;
 $DEBUGOUT = "sample.debug";
 $DIOUT    = "sample.di";
 $HINAOUT  = "sample.hina";
-# $AGENT_COMMENT = " (WWW-Dancing-Bee; )";
+# $AGENT_COMMENT = "WWW-Dancing-Bee; sample";
 # $HTTP_TIMEOUT = 10;
 
 # WDB本体を起動 

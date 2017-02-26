@@ -1,3 +1,25 @@
+2001/12/09 V2.07 GORRY
+・リモートでhina-diを読み込んだとき、Hina-Versionを書き換えて
+  しまうバグを修正。
+・If-Modified-Since:に対応。
+・リクエスト時にAccept-Encoding: gzip, x-gzipを付けるようにした。
+・gif・jpeg・pngのイメージサイズを取得できるようにした。
+
+2001/11/28 V2.06 GORRY
+・Virtualで取得したHTMLからメタ情報収集を行わないようにした。
+・hina.diにhina-2.2beta準拠全フィールドを出力するようにした。
+・hina.diの読み込み時にLast-Modified-Detectedフィールドがない
+  場合、他から値を補完していた機能を削除した。
+
+2001/11/14 V2.05 GORRY
+・認識時刻フォーマット追加。
+  "MM/DD_hh:mm:ss"（１月２３日 １６時５６分０７秒）
+
+2001/11/09 V2.04 GORRY
+・WDBファイルの行が"COMMENT:"など（":"のあとに空白がない）に
+  なっていると誤動作するバグを修正。
+・http HEADERに存在するTitle:・Author:に対応。
+
 2001/09/11 V2.03 GORRY
 ・Perl4対応修正。（thanks to SARUMARU）
 ・認識時刻フォーマット追加。（thanks to SARUMARU）

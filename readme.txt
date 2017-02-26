@@ -1,5 +1,5 @@
 ■ WWW更新時刻取得システム "WDB"
-■ V2.06 Copyright 1999,2000,2001 GORRY.
+■ V2.07 Copyright 1999,2000,2001 GORRY.
 ■ http://GORRY.hauN.org/wdb/
 ■ mailto: gorry@hauN.org
 
@@ -376,7 +376,7 @@ WDBを動作させるには、以下の設定が必要です。
 
 ■ 8. hina.diについて
 
-WDBは、「朝日奈アンテナ」に準拠したリモートアンテナファイル
+WDBは、「hina-di」に準拠したリモートアンテナファイル
 「hina.di」を作成することができます。これは、外部への提供は
 もちろんのこと、自らの前回動作結果としても使用することができます。
 
@@ -384,8 +384,12 @@ WDBは、「朝日奈アンテナ」に準拠したリモートアンテナファイル
 取得できなくなったときに、前回の動作結果を今回の動作結果として
 引き継ぐことができるようになります。
 
-WDBは、「朝日奈アンテナ」でサポートされている一部のフィールドを
-サポートしています。
+WDBは、「hina-2.2beta」でサポートされているすべてのフィールドを
+入出力することができます。
+
+・HINA-Version:
+対応しているhina-diのバージョンを示します。
+WDBでは、"hina-2.2beta"を出力します。
 
 ・URL:
 ターゲットのリンク先URIです。
@@ -434,10 +438,13 @@ hina.diを生成したシステムのURLです。
 コンテンツの更新を検知した時刻です。
 GMTのUNIX TIMEフォーマットで記述されます。
 
-・X-No-Time-In-Contents:
+・Image-Width:, Image-Height:
+コンテンツが画像である場合に、画像の幅と高さを値とします。
+
+・X-LM-Is-FMD:
 コンテンツからは更新時刻が取得できないことを"1"で示します。
 この場合、アンテナ出力HTMLファイルにはLast-Modified:でなく
-Last-Modified-Detected:の時刻を出力することを暗に要求します。
+X-First-Modified-Detected:の時刻を出力することを暗に要求します。
 
 ・X-WDB-Title:
 巡回定義ファイルで定義された「WWWページの名称」を値とします。
@@ -445,6 +452,8 @@ Last-Modified-Detected:の時刻を出力することを暗に要求します。
 ・X-WDB-Author-Name:
 巡回定義ファイルで定義された「WWWページの著者名」を値とします。
 
+・X-First-Modified-Detected
+Last-Modified:が現在の値であることを最初に検知した時刻です。
 
 ■ 8. WDB MAINTENANCE DISPLAYの使用方法
 
