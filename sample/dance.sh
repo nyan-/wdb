@@ -8,7 +8,7 @@
 #### 1999/07/14 V0.14 新規作成
 
 # DIRは環境に合わせて変更すること。
-DIR="/home/yourhome/public_html/yourantenna/wdb"
+DIR="/home/your-home/public_html/your-antenna/wdb"
 
 # 実行パス設定
 PERL="/usr/local/bin/perl"

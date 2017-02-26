@@ -21,7 +21,7 @@
 ### ユーザー毎の設定 
 #
 
-$DEBUG    = 0 if ( !defined( $DEBUG ) );
+$DEBUG    = 1 if ( !defined( $DEBUG ) );
 $DEBUGOUT = "WDB.debug" if ( !defined( $DEBUGOUT ) );
 $DIOUT    = "WDB.di" if ( !defined( $DIOUT ) );
 $HINAOUT  = "WDB.hina" if ( !defined( $HINAOUT ) );
@@ -43,14 +43,16 @@ $MAILCMD = "nkf -j | mail -s \"\@\@WDB-POSTMAIL\"" if ( !defined( $MAILCMD ) );
 # エージェント設定 
 $HINA_VER      = "HINA/2.2beta";
 $AGENT_NAME    = "WDB";
-$AGENT_VER     = "2.07";
+$AGENT_VER     = "2.10";
 $AGENT         = "$AGENT_NAME/$AGENT_VER (Antenna; $HINA_VER; $AGENT_COMMENT)";
 
 # ソケット設定 
-$AF_INET = 2;
-$SOCK_STREAM = 1;
-$WNOHANG = 1;
-$SOCKADDR = 'S n a4 x8';
+$USE_IPV6      = 0;
+# 以下はwdblib.plがSocket.pmを使うようになったため廃止された。
+# $AF_INET = 2;
+# $SOCK_STREAM = 1;
+# $WNOHANG = 1;
+# $SOCKADDR = 'S n a4 x8';
 
 # HINA.HTMLへの出力フォーマット 
 $HINA_HTML_FORMAT =

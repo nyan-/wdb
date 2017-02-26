@@ -15,10 +15,10 @@
 $WDBFILE = "config.wdb";
 
 # WDBが使用するPROXYを"サーバ:ポート"で指定 
-# $PROXY    = "yourserver:8080";
+# $PROXY    = "your-server:8080";
 
 # アンテナシステムのURI 
-$ANTENNA_URI  = "http://yourserver.net/~yourhome/yourantenna/";
+$ANTENNA_URI  = "http://www.example.com/~your-home/your-antenna/";
 
 # HINA.HTMLへの出力フォーマット 
 $HINA_HTML_FORMAT = 

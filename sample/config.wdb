@@ -1,5 +1,5 @@
-REMOTE:		yourantenna
-URI:		http://www.yourserver.net/wdb/
+REMOTE:		example your-net
+URI:		http://www.example.com/your-net/wdb/
 TITLE:		MYSELF
 AUTHOR:		MYSELF
 VIRTUAL:		../hina.di

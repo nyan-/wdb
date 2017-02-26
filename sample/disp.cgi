@@ -15,7 +15,7 @@ $DISP_PL = "disp.cgi";
 
 # .wdbファイル更新通知先メールアドレスを指定 
 $MAILTO = "";
-# $MAILTO = "yourmail@yourserver";
+# $MAILTO = "your-mail@example.com";
 
 # 以下は必要な場合のみ設定 
 $DEBUG    = 0;

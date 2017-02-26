@@ -1,9 +1,14 @@
 #!/usr/local/bin/perl
-#### ◇WDB用ライブラリ 「WDBLIB」 V2.07
-#### Copyright 1999-2001 GORRY. 
+#### ◇WDB用ライブラリ 「WDBLIB」 V2.10
+#### Copyright 1999-2004 GORRY. 
 #### mailto: gorry@hauN.org 
 #### 
 #### History: 
+#### 2004/07/24 V2.10 ・RSSの読み込みに対応。
+#### 2003/01/02 V2.09 ・"User-Agent:"で始まる行を発見したとき、自動的にDI解析モードに
+####                    移行するようにした。
+#### 2002/07/24 V2.08 ・Expiresが空のリモート情報を受け取ったときに、補完するようにした。
+####                    が、取り消し。
 #### 2001/12/09 V2.07 ・リモートでhina-diを読み込んだとき、Hina-Versionを書き換えて
 ####                    しまうバグを修正。
 ####                  ・If-Modified-Since:に対応。
@@ -137,6 +142,16 @@
 
 require 'jcode.pl';
 require 'wdb.ph';
+
+#use Socket;
+require Socket;
+import Socket;
+if ( $USE_IPV6 )
+{
+	#use Socket6;
+	require Socket6;
+	import Socket6;
+}
 
 # &Initialize();
 # $a = "2000/01/02 03:04:05";
@@ -1499,7 +1514,7 @@ sub ParseHinaTxt
 	local( $cern );
 	local( $hop );
 	local( $author );
-	local( $fmddate );
+	local( $fmddate ) = $NOWDATE;
 	local( $date );
 	local( $starttime ) = time;
 
@@ -1629,10 +1644,12 @@ if (0) {
 }
 				$DP{$dpl,"X-Result-Method"} = "REMOTE";
 				$DP{ $dpl, "HINA-Version"} = $HINA_VER;
+				undef $DP{ $dpl, "Content-Type" };
 			}
 		}
 	}
  printf ( DEBUGOUT "ParseHinaTxt() = %d sec.\n", time-$starttime ) if ($DEBUG);
+	return (0);
 }
 
 
@@ -1743,6 +1760,7 @@ sub ParseHinaDI
 					$DP{ $dpl, "Authorized-url" } = &NormalURI( $nodelist{ "Authorized-url" } );
 					$DP{ $dpl, "Expire" } = &ExtractNormalDate( $nodelist{ "Expires" }, $FUTURETIME );
 					$DP{ $dpl, "Expire" } = &ExtractNormalDate( $nodelist{ "Expire" }, $FUTURETIME ) if ( $DP{ $dpl, "Expire" } lt $EXPIRETIME );
+#					$DP{ $dpl, "Expire" } = $EXPIRETIME if ( $DP{ $dpl, "Expire" } eq "" );
 #					$DP{ $dpl, "Expire" } = $EXPIRETIME if ( $DP{ $dpl, "Expire" } lt $EXPIRETIME );
 					$DP{ $dpl, "Expires" } = $DP{ $dpl, "Expire" };
 
@@ -1766,6 +1784,8 @@ sub ParseHinaDI
 					$DP{ $dpl, "X-Authorized-Pagename" } = $pagename;
 					$DP{ $dpl, "X-ResultStatus" } = 200;
 					$DP{ $dpl, "X-Result-Method" } = "REMOTE";
+					$DP{ $dpl, "X-Time-Format" } = "HINA-DI";
+					undef $DP{ $dpl, "Content-Type" };
 				}
  print DEBUGOUT "========\n" if ($DEBUG);
 			}
@@ -1792,22 +1812,491 @@ sub ParseHinaDI
 }
 
 ########################################################################
+### RSSの解析 
+## ParseRSS( PAGENAME, INFILE, REMOTEFLAG )
+#
+sub ParseRSS
+{
+	local( $pagename ) = shift;
+	local( $infile ) = shift;
+	local( $agent ) = shift;
+	local( $year, $month, $day, $hour, $min, $sec );
+	local( $href );
+	local( $newestdate );
+	local( $lmdate );
+	local( $lmddate ) = $NOWTIME;
+	local( $dpl );
+	local( $update );
+	local( $fmddate ) = $NOWDATE;
+	local( $starttime ) = time;
+	local( $ana_dcdate );
+	local( $ana_link );
+	local( $link );
+	local( $ana_title );
+	local( $title );
+	local( $ana_dcpublisher );
+	local( $creator );
+	local( $ana_dccreator );
+	local( $publisher ) = "";
+	local( $ana_dcpublisher );
+	local( $publisher );
+	local( $ana_rdfabout );
+	local( $rdfabout );
+	local( $channel_link );
+	local( $founditem );
+	local( $i );
+	local( $n_channel_links ) = 0;
+	local( @channel_links );
+
+ print DEBUGOUT "ParseRSS( $pagename, $infile ):\n" if ($DEBUG);
+
+	( $year, $month, $day, $hour, $min ) = ( 1970, 1, 1, 0, 0 );
+
+	open( FIN, "$NKF $infile|" ) || die "cannot open [$NKF $infile|].";
+	line: while (<FIN>) {
+		s/[\012\015]+//;
+		$founditem = 0;
+		if ( /<channel|item[ \t]+rdf:about/ ) {
+			$founditem = 1;
+		}
+		if ( /<item[ \t]+rdf:about/ ) {
+			$founditem = 2;
+		}
+		if ( $founditem > 0 ) {
+			$ana_rdfabout = $_;
+			while ( !($ana_rdfabout =~ m:>: ) ) {
+				last line if ( !(<FIN>) );
+				s/[\012\015]+//;
+				$ana_rdfabout .= $_;
+			}
+			if ( $founditem == 1 ) {
+ print DEBUGOUT "\nFound Channel: \[$ana_rdfabout\]\n" if ($DEBUG);
+			} else {
+ print DEBUGOUT "\nFound Item: \[$ana_rdfabout\]\n" if ($DEBUG);
+			}
+			$rdfabout = $ana_rdfabout;
+			$rdfabout =~ s/^.*<(channel|item)[ \t]+rdf:about=\"([^\"]*)\".*$/\2/;
+			$rdfabout = &ExtractNormalURI( $rdfabout );
+			if ( $rdfabout =~ m/^http:/ ) {
+ print DEBUGOUT "Found URI: \[$rdfabout\]\n" if ($DEBUG);
+				undef $lmdate;
+				undef $title;
+				undef $link;
+				rdfabout: while ( <FIN> ) {
+					last if ( $_ =~ m:</(channel|item)>: );
+					s/[\012\015]+//;
+					if ( /<dc:date>/ ) {
+						$ana_dcdate = $_;
+						while ( !($ana_dcdate =~ m#</dc:date># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_dcdate .= $_;
+						}
+ print DEBUGOUT "Found dc:date: \[$ana_dcdate\]\n" if ($DEBUG);
+						$date = &ExtractNormalDate( $ana_dcdate, $IGNORETIME );
+						if ( $date ne $ERRTIME ) {
+ print DEBUGOUT "new dc:date: $date\n" if ($DEBUG);
+ print DEBUGOUT "now dc:date: $lmdate\n" if ($DEBUG);
+							if ( $lmdate lt $date ) {
+ print DEBUGOUT "updated newer Last-Modified.\n" if ($DEBUG);
+								$lmdate = $date;
+							}
+						}
+					}
+					if ( /<pubDate>/ ) {
+						$ana_dcdate = $_;
+						while ( !($ana_dcdate =~ m#</pubDate># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_dcdate .= $_;
+						}
+ print DEBUGOUT "Found pubDate: \[$ana_dcdate\]\n" if ($DEBUG);
+						$date = &ExtractNormalDate( $ana_dcdate, $IGNORETIME );
+						if ( $date ne $ERRTIME ) {
+ print DEBUGOUT "new pubDate: $date\n" if ($DEBUG);
+ print DEBUGOUT "now pubDate: $lmdate\n" if ($DEBUG);
+							if ( $lmdate lt $date ) {
+ print DEBUGOUT "updated newer Last-Modified.\n" if ($DEBUG);
+								$lmdate = $date;
+							}
+						}
+					}
+					if ( /<link>/ ) {
+						$ana_link = $_;
+						while ( !($ana_link =~ m#</link># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_link .= $_;
+						}
+ print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
+						if ( $link eq "" ) {
+							$link = $ana_link;
+							$link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+							$link = &ExtractNormalURI( $link );
+						}
+						if ( $founditem == 1 ) {
+							$channel_link = $link;
+							$channel_links[$n_channel_links++] = $link;
+						}
+					}
+					if ( /<title>/ ) {
+						$ana_title = $_;
+						while ( !($ana_title =~ m#</title># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_title .= $_;
+						}
+ print DEBUGOUT "Found title: \[$ana_title\]\n" if ($DEBUG);
+						if ( $title eq "" ) {
+							$title = $ana_title;
+							$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#\1#;
+						}
+					}
+					if ( /<dc:publisher>/ ) {
+						$ana_dcpublisher = $_;
+						while ( !($ana_dcpublisher =~ m#</dc:publisher># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_dcpublisher .= $_;
+						}
+ print DEBUGOUT "Found dc:publisher: \[$ana_dcpublisher\]\n" if ($DEBUG);
+						if ( $publisher eq "" ) {
+							$publisher = $ana_dcpublisher;
+							$publisher =~ s#^.*<dc:publisher>[ \t]*(.*)[ \t]*</dc:publisher>.*$#\1#;
+						}
+					}
+					if ( /<dc:creator>/ ) {
+						$ana_dccreator = $_;
+						while ( !($ana_dccreator =~ m#</dc:creator># ) ) {
+							last line if ( !(<FIN>) );
+							s/[\012\015]+//;
+							$ana_dccreator .= $_;
+						}
+ print DEBUGOUT "Found dc:creator: \[$ana_dccreator\]\n" if ($DEBUG);
+						if ( $creator eq "" ) {
+							$creator = $ana_dccreator;
+							$creator =~ s#^.*<dc:creator>[ \t]*(.*)[ \t]*</dc:creator>.*$#\1#;
+						}
+					}
+				}
+ print DEBUGOUT "Found End-of-Channel or Item.\n" if ($DEBUG);
+				if ( defined $lmdate ) {
+ print DEBUGOUT "Updated: \[$lmdate\].\n" if ($DEBUG);
+					if ( $newestdate lt $lmdate ) {
+						$newestdate = $lmdate;
+ print DEBUGOUT "Update newestdate: \[$newestdate\].\n" if ($DEBUG);
+					}
+				}
+				$dpl = $URI2PAGENAME{&CaseLowerDomainNameURI($link)};
+ print DEBUGOUT "\[$link\] \[$dpl\]\n" if ($DEBUG);
+				if ( $DP{ $dpl, "URI" } ne "" ) {
+					$update = 0;
+ print DEBUGOUT "new Last-Modified: $lmdate\n" if ($DEBUG);
+ print DEBUGOUT "now Last-Modified: $DP{ $dpl, \"Last-Modified\" }\n" if ($DEBUG);
+					if ( $DP{ $dpl, "Last-Modified" } lt $lmdate ) {
+						$update = 1;
+ print DEBUGOUT "updated newer Last-Modified on \[$pagename\].\n" if ($DEBUG);
+					}
+#					if ( $update ) {
+						undef $DP{ $dpl, "Author-Name" };
+						undef $DP{ $dpl, "Title" };
+						undef $DP{ $dpl, "Keyword" };
+						$DP{ $dpl, "Last-Modified" } = $lmdate;
+						$DP{ $dpl, "Method" } .= "/" if ( $DP{ $dpl, "Method" } ne "" );
+						$DP{ $dpl, "Method" } .= "RSS";
+						$DP{ $dpl, "Date" } = $NOWTIME;
+						$DP{ $dpl, "X-Authorized-Pagename" } = $pagename;
+						$DP{ $dpl, "Authorized-url" } = $RP{ $pagename, "URI" };
+						$DP{ $dpl, "Authorized" } = $AGENT;
+						$DP{ $dpl, "Server" } = "";
+						$DP{ $dpl, "X-ResultStatus" } = 200;
+						$DP{ $dpl, "X-Hop" } = "";
+						$DP{ $dpl, "Expire" } = &ClockToDate2(&DateToClock($RP{ $pagename, "Date" })+3600*$DEFAULT_EXPIRETIME);
+						$DP{ $dpl, "Expires" } = $DP{ $dpl, "Expire" };
+						if ( $update == 1 ) {
+							$DP{ $dpl, "X-First-Modified-Detected" } = $fmddate;
+ printf( DEBUGOUT "updated X-First-Modified-Detected: [%s]\n", $DP{ $dpl, "X-First-Modified-Detected" } ) if ($DEBUG);
+						}
+						$DP{ $dpl, "Last-Modified-Detected" } = $lmddate;
+						$DP{ $dpl, "X-LM-Is-FMD" } = "0" if ( $update == 1 );
+						if ( $publisher eq "" ) {
+							$publisher = $creator;
+						}
+						$DP{ $dpl, "AUTHOR" } = $publisher if ( $DP{ $dpl, "AUTHOR" } eq "" );
+						$DP{ $dpl, "Author-Name" } = $publisher if ( $publisher ne "" );
+						$DP{ $dpl, "TITLE" } = $title if ( $DP{ $dpl, "TITLE" } eq "" );
+						$DP{ $dpl, "Title" } = $title if ( $title ne "" );
+						$DP{ $dpl,"X-Result-Method" } = "RSS";
+						$DP{ $dpl, "X-Time-Format" } = "RSS";
+						undef $DP{ $dpl, "Content-Type" };
+#					}
+				}
+			}
+		}
+	}
+
+ print DEBUGOUT "\nFounded channels:\n" if ($DEBUG);
+	for ( $i=0; $i<$n_channel_links; $i++ ) {
+		printf( DEBUGOUT " %s\n", $channel_links[$i] ) if ($DEBUG);
+		$dpl = $URI2PAGENAME{&CaseLowerDomainNameURI($channel_links[$i])};
+		if ( $DP{ $dpl, "URI" } ne "" ) {
+			if ( $DP{ $dpl, "Last-Modified" } lt $newestdate ) {
+ print DEBUGOUT "  updated newer Last-Modified on newestdate.\n" if ($DEBUG);
+				$DP{ $dpl, "Last-Modified" } = $newestdate;
+			}
+		}
+	}
+
+ printf ( DEBUGOUT "\nParseHinaTxt() = %d sec.\n", time-$starttime ) if ($DEBUG);
+	return (0);
+}
+
+
+########################################################################
+### RSSの解析2 
+## ParseRSS2( PAGENAME, INFILE, REMOTEFLAG )
+#
+sub ParseRSS2
+{
+	local( $pagename ) = shift;
+	local( $infile ) = shift;
+	local( $agent ) = shift;
+	local( $year, $month, $day, $hour, $min, $sec );
+	local( $href );
+	local( $newestdate );
+	local( $lmdate );
+	local( $lmddate ) = $NOWTIME;
+	local( $dpl );
+	local( $update );
+	local( $fmddate ) = $NOWDATE;
+	local( $starttime ) = time;
+	local( $ana_dcdate );
+	local( $ana_link );
+	local( $link );
+	local( $ana_title );
+	local( $title );
+	local( $ana_pubdate );
+	local( $publisher ) = "";
+	local( $ana_dcpublisher );
+	local( $channel_link );
+	local( $i );
+	local( $n_channel_links ) = 0;
+	local( @channel_links );
+	local( $line );
+	local( $l );
+	local( $phase );
+
+ print DEBUGOUT "ParseRSS2( $pagename, $infile ):\n" if ($DEBUG);
+
+	( $year, $month, $day, $hour, $min ) = ( 1970, 1, 1, 0, 0 );
+
+	$phase = 0;
+	open( FIN, "$NKF $infile|" ) || die "cannot open [$NKF $infile|].";
+	while (<FIN>) {
+		s/[\012\015]+//;
+		last if ( $_ eq "" );
+	}
+	line: while (<FIN>) {
+		s/[\012\015]+//;
+		$line = $_;
+		while ( !($line =~ m/>/) ) {
+			last line if ( !($l = <FIN>) );
+			$l =~ s/[\012\015]+//;
+			$line .= $l;
+		}
+ print DEBUGOUT "phase $phase: $line\n" if ($DEBUG);
+
+		if ( $phase == 0 ) {
+			if ( $line =~ m:<rss.*version.*=.*"2.0": ) {
+ print DEBUGOUT "Found phase 1: $line\n" if ($DEBUG);
+				$phase = 1;
+			}
+		} elsif ($phase == 1 ) {
+			if ( $line =~ m:<channel.*>: ) {
+ print DEBUGOUT "Found phase 2:  $line\n" if ($DEBUG);
+				$phase = 2;
+			}
+		} elsif ($phase == 2 ) {
+			if ( $line =~ m:</channel.*>: ) {
+ print DEBUGOUT "Found phase 1:  $line\n" if ($DEBUG);
+				$phase = 1;
+			}
+			if ( $line =~ m:<item.*>: ) {
+ print DEBUGOUT "Found phase 3:  $line\n" if ($DEBUG);
+				$phase = 3;
+			}
+			if ( $line =~ m/<link.*>/ ) {
+				$ana_link = $_;
+				while ( !($ana_link =~ m#</link># ) ) {
+					last line if ( !(<FIN>) );
+					s/[\012\015]+//;
+					$ana_link .= $_;
+				}
+ print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
+				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+				$link = &ExtractNormalURI( $ana_link );
+				$channel_links[$n_channel_links++] = $link;
+			}
+			if ( $line =~ m/<title.*>/ ) {
+				$ana_title = $line;
+				while ( !($ana_title =~ m#</title># ) ) {
+					last line if ( !(<FIN>) );
+					s/[\012\015]+//;
+					$ana_title .= $_;
+				}
+ print DEBUGOUT "Found title: \[$ana_title\]\n" if ($DEBUG);
+				if ( $title eq "" ) {
+					$title = $ana_title;
+					$title =~ s#^.*<title>[ \t]*(.*)[ \t]*</title>.*$#\1#;
+				}
+			}
+			if ( $line =~ m/<pubDate.*>/ ) {
+				$ana_pubdate = $line;
+				while ( !($ana_pubdate =~ m#</pubDate># ) ) {
+					last line if ( !(<FIN>) );
+					s/[\012\015]+//;
+					$ana_pubdate .= $_;
+				}
+ print DEBUGOUT "Found pubdate: \[$ana_pubdate\]\n" if ($DEBUG);
+				if ( $pubdate_header eq "" ) {
+					$pubdate_header = $ana_pubdate;
+					$pubdate_header =~ s#^.*<pubDate>[ \t]*(.*)[ \t]*</pubDate>.*$#\1#;
+					$date = &ExtractNormalDate( $pubdate_header, $IGNORETIME );
+ print DEBUGOUT "updated newer Last-Modified.\n" if ($DEBUG);
+					$lmdate = $date;
+				}
+			}
+		} elsif ($phase == 3 ) {
+			if ( $line =~ m:</item>: ) {
+ print DEBUGOUT "Found phase 2:  $line\n" if ($DEBUG);
+				$phase = 2;
+			}
+			if ( $line =~ m/<link.*>/ ) {
+				$ana_link = $_;
+				while ( !($ana_link =~ m#</link># ) ) {
+					last line if ( !(<FIN>) );
+					s/[\012\015]+//;
+					$ana_link .= $_;
+				}
+ print DEBUGOUT "Found link: \[$ana_link\]\n" if ($DEBUG);
+				$ana_link =~ s#^.*<link>[ \t]*(.*)[ \t]*</link>.*$#\1#;
+				$link = &ExtractNormalURI( $ana_link );
+				$channel_links[$n_channel_links++] = $link;
+			}
+			if ( $line =~ m/<pubDate.*>/ ) {
+				$ana_pubdate = $line;
+				while ( !($ana_pubdate =~ m#</pubDate># ) ) {
+					last line if ( !(<FIN>) );
+					s/[\012\015]+//;
+					$ana_pubdate .= $_;
+				}
+ print DEBUGOUT "Found pubDate: \[$ana_pubdate\]\n" if ($DEBUG);
+				$date = &ExtractNormalDate( $ana_pubdate, $IGNORETIME );
+				if ( $date ne $ERRTIME ) {
+ print DEBUGOUT "new pubDate: $date\n" if ($DEBUG);
+ print DEBUGOUT "now pubDate: $lmdate\n" if ($DEBUG);
+					if ( $lmdate lt $date ) {
+ print DEBUGOUT "updated newer Last-Modified.\n" if ($DEBUG);
+						$lmdate = $date;
+					}
+				}
+			}
+
+			if ( $phase != 3 ) {
+				if ( defined $lmdate ) {
+ print DEBUGOUT "Updated: \[$lmdate\].\n" if ($DEBUG);
+					if ( $newestdate lt $lmdate ) {
+						$newestdate = $lmdate;
+ print DEBUGOUT "Update newestdate: \[$newestdate\].\n" if ($DEBUG);
+					}
+				}
+				$dpl = $URI2PAGENAME{&CaseLowerDomainNameURI($link)};
+ print DEBUGOUT "\[$link\] \[$dpl\]\n" if ($DEBUG);
+				if ( $DP{ $dpl, "URI" } ne "" ) {
+					$update = 0;
+ print DEBUGOUT "new Last-Modified: $lmdate\n" if ($DEBUG);
+ print DEBUGOUT "now Last-Modified: $DP{ $dpl, \"Last-Modified\" }\n" if ($DEBUG);
+					if ( $DP{ $dpl, "Last-Modified" } lt $lmdate ) {
+						$update = 1;
+ print DEBUGOUT "updated newer Last-Modified on \[$pagename\].\n" if ($DEBUG);
+					}
+#					if ( $update ) {
+						undef $DP{ $dpl, "Author-Name" };
+						undef $DP{ $dpl, "Title" };
+						undef $DP{ $dpl, "Keyword" };
+						$DP{ $dpl, "Last-Modified" } = $lmdate;
+						$DP{ $dpl, "Method" } .= "/" if ( $DP{ $dpl, "Method" } ne "" );
+						$DP{ $dpl, "Method" } .= "RSS";
+						$DP{ $dpl, "Date" } = $NOWTIME;
+						$DP{ $dpl, "X-Authorized-Pagename" } = $pagename;
+						$DP{ $dpl, "Authorized-url" } = $RP{ $pagename, "URI" };
+						$DP{ $dpl, "Authorized" } = $AGENT;
+						$DP{ $dpl, "Server" } = "";
+						$DP{ $dpl, "X-ResultStatus" } = 200;
+						$DP{ $dpl, "X-Hop" } = "";
+						$DP{ $dpl, "Expire" } = &ClockToDate2(&DateToClock($RP{ $pagename, "Date" })+3600*$DEFAULT_EXPIRETIME);
+						$DP{ $dpl, "Expires" } = $DP{ $dpl, "Expire" };
+						if ( $update == 1 ) {
+							$DP{ $dpl, "X-First-Modified-Detected" } = $fmddate;
+ printf( DEBUGOUT "updated X-First-Modified-Detected: [%s]\n", $DP{ $dpl, "X-First-Modified-Detected" } ) if ($DEBUG);
+						}
+						$DP{ $dpl, "Last-Modified-Detected" } = $lmddate;
+						$DP{ $dpl, "X-LM-Is-FMD" } = "0" if ( $update == 1 );
+						$DP{ $dpl, "AUTHOR" } = $publisher if ( $DP{ $dpl, "AUTHOR" } eq "" );
+						$DP{ $dpl, "Author-Name" } = $publisher if ( $publisher ne "" );
+						$DP{ $dpl, "TITLE" } = $title if ( $DP{ $dpl, "TITLE" } eq "" );
+						$DP{ $dpl, "Title" } = $title if ( $title ne "" );
+						$DP{ $dpl,"X-Result-Method" } = "RSS";
+						$DP{ $dpl, "X-Time-Format" } = "RSS";
+						undef $DP{ $dpl, "Content-Type" };
+#					}
+				}
+			}
+		}
+	}
+
+ print DEBUGOUT "\nFounded channels:\n" if ($DEBUG);
+	for ( $i=0; $i<$n_channel_links; $i++ ) {
+		printf( DEBUGOUT " %s\n", $channel_links[$i] ) if ($DEBUG);
+		$dpl = $URI2PAGENAME{&CaseLowerDomainNameURI($channel_links[$i])};
+		if ( $DP{ $dpl, "URI" } ne "" ) {
+			if ( $DP{ $dpl, "Last-Modified" } lt $newestdate ) {
+ print DEBUGOUT "  updated newer Last-Modified on newestdate.\n" if ($DEBUG);
+				$DP{ $dpl, "Last-Modified" } = $newestdate;
+				$DP{ $dpl,"X-Result-Method" } = "RSS";
+				$DP{ $dpl, "X-Time-Format" } = "RSS";
+			}
+		}
+	}
+
+ printf ( DEBUGOUT "\nParseHinaTxt() = %d sec.\n", time-$starttime ) if ($DEBUG);
+	return (0);
+}
+
+
+########################################################################
 ### イメージファイル解析 
 ## SUCCESS = ParseImage( PAGENAME, INFILENO )
 #
 sub ParseImage
 {
 	local( $pagename ) = shift;
-#	local( FIN ) = shift; # dummy
+	local( $infile ) = shift;
 	local( $dpl );
 	local( $buf );
 	local( @b );
 	local( $type );
 	local( $len );
 
- print DEBUGOUT "ParseImage( $pagename, FIN ):\n" if ($DEBUG);
+ print DEBUGOUT "ParseImage( $pagename, $infile ):\n" if ($DEBUG);
 
 	$dpl = $pagename;
+	open( FIN, $infile );
+	binmode( FIN );
+	while (<FIN>) {
+		s/[\012\015]+//g;
+		last if ( $_ eq '' );
+	}
 
 	if ( $DP{ $dpl, "Content-Type" } =~ "image\/gif" ) {
 print DEBUGOUT "Read GIF:\n" if ($DEBUG);
@@ -1816,8 +2305,9 @@ print DEBUGOUT "Read GIF:\n" if ($DEBUG);
  printf DEBUGOUT ( "Check Width: %02X %02X %02X %02X\n", $b[6], $b[7], $b[8], $b[9] ) if ($DEBUG);
 		$DP{ $dpl, "Image-Width" }  = $b[6]+$b[7]*256;
 		$DP{ $dpl, "Image-Height" } = $b[8]+$b[9]*256;
+		close( FIN );
 		return (0);
- print DEBUGOUT "Read JPEG Error\n" if ($DEBUG);
+ print DEBUGOUT "Read GIF Error\n" if ($DEBUG);
 	}
 
 	if ( $DP{ $dpl, "Content-Type" } =~ "image\/jpeg" ) {
@@ -1825,11 +2315,11 @@ print DEBUGOUT "Read GIF:\n" if ($DEBUG);
 		read( FIN, $buf, 2 );
 		while ( read( FIN, $buf, 1 ) == 1 ) {
 			@b = unpack( "C", $buf );
-# printf DEBUGOUT ( "Check Mark: %02X\n", $b[0] ) if ($DEBUG);
+ printf DEBUGOUT ( "Check Mark: %02X\n", $b[0] ) if ($DEBUG);
 			if ( $b[0] == 0xff ) {
 				read( FIN, $buf, 3 );
 				@b = unpack( "CCC", $buf );
-# printf DEBUGOUT ( "Check Type: %02X %02X %02X\n", $b[0], $b[1], $b[2] ) if ($DEBUG);
+ printf DEBUGOUT ( "Check Type: %02X %02X %02X\n", $b[0], $b[1], $b[2] ) if ($DEBUG);
 				$type = $b[0];
 				$len = $b[1]*256+$b[2];
 				read( FIN, $buf, $len-2 );
@@ -1838,6 +2328,7 @@ print DEBUGOUT "Read GIF:\n" if ($DEBUG);
  printf DEBUGOUT ( "Check Width: %02X %02X %02X %02X\n", $b[0], $b[1], $b[2], $b[3] ) if ($DEBUG);
 					$DP{ $dpl, "Image-Height" }  = $b[1]*256+$b[2];
 					$DP{ $dpl, "Image-Width" } = $b[3]*256+$b[4];
+					close( FIN );
 					return (0);
 				}
 			}
@@ -1862,6 +2353,7 @@ print DEBUGOUT "Read GIF:\n" if ($DEBUG);
  printf DEBUGOUT ( "Check Width: %02X %02X %02X %02 %02X %02X %02X %02X\n", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7] ) if ($DEBUG);
 					$DP{ $dpl, "Image-Width" }  = $b[0]*0x1000000+$b[1]*0x10000+$b[2]*0x100+$b[3];
 					$DP{ $dpl, "Image-Height" } = $b[4]*0x1000000+$b[5]*0x10000+$b[6]*0x100+$b[7];
+					close( FIN );
 					return (0);
 				}
 			}
@@ -1869,6 +2361,7 @@ print DEBUGOUT "Read GIF:\n" if ($DEBUG);
  print DEBUGOUT "Read PNG Error\n" if ($DEBUG);
 	}
 
+	close( FIN );
 	return (1);
 }
 
@@ -1887,6 +2380,7 @@ sub ParseDocumentLocal
 	local( $timeformat );
 	local( $firstline );
 	local( $isbody ) = 0;
+	local( $noautosense ) = 0;
 	local( @a );
 	local( %header );
 	local( $tag );
@@ -1946,7 +2440,7 @@ sub ParseDocumentLocal
 	$foundlmd = 0;
 	$firstline = !0;
 	if ( $nonkf ) {
-		open( FIN, "$infile" ) || die "cannot open [$NKF $infile|].";;
+		open( FIN, "$infile" ) || die "cannot open [$infile].";;
 	} else {
 		open( FIN, "$NKF $infile|" ) || die "cannot open [$NKF $infile|].";;
 	}
@@ -1992,24 +2486,55 @@ sub ParseDocumentLocal
 			( $tag, $param ) = split( ': ' );
 			$header{ $tag } = $param;
 		} else {
-			if ( $isimage ) {
-				&ParseImage( $pagename, FIN );
-				close( FIN );
-				return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
-				return (1);
+			if ( m:^[ \t]*<HTML:i ) {
+				$noautosense = !0;
 			}
-			if ( m:^HINA/2.[0-9]: ) {
-				close( FIN );
-				$URI2PAGENAME{ &CaseLowerDomainNameURI( $DP{ $dpl, "URI" } ) } = $dpl;
-				undef $DP{ $dpl, "Author-Name" };
-				undef $DP{ $dpl, "Title" };
-				undef $DP{ $dpl, "Keyword" };
-				undef $DP{ $dpl, "X-VirtualURI" };
-				$DP{ $dpl, "Last-Modified" } = "";
-				$DP{ $dpl, "X-Time-Format" } = $_;
-				&ParseHinaDI( $pagename, $infile, 0 );
-				return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
-				return (1);
+			if ( !$noautosense ) {
+				if ( $isimage ) {
+					close( FIN );
+					&ParseImage( $pagename, $infile );
+					return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+					return (1);
+				}
+				if ( m:^HINA/2.[0-9]: || m/^User-Agent:/i ) {
+					close( FIN );
+					$URI2PAGENAME{ &CaseLowerDomainNameURI( $DP{ $dpl, "URI" } ) } = $dpl;
+					undef $DP{ $dpl, "Author-Name" };
+					undef $DP{ $dpl, "Title" };
+					undef $DP{ $dpl, "Keyword" };
+					undef $DP{ $dpl, "X-VirtualURI" };
+					$DP{ $dpl, "Last-Modified" } = "";
+					$DP{ $dpl, "X-Time-Format" } = $_;
+					&ParseHinaDI( $pagename, $infile, 0 );
+					return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+					return (1);
+				}
+				if ( m/<rdf:RDF/ ) {
+					close( FIN );
+					$URI2PAGENAME{ &CaseLowerDomainNameURI( $DP{ $dpl, "URI" } ) } = $dpl;
+					undef $DP{ $dpl, "Author-Name" };
+					undef $DP{ $dpl, "Title" };
+					undef $DP{ $dpl, "Keyword" };
+					undef $DP{ $dpl, "X-VirtualURI" };
+					$DP{ $dpl, "Last-Modified" } = "";
+					$DP{ $dpl, "X-Time-Format" } = $_;
+					&ParseRSS( $pagename, $infile, 0 );
+					return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+					return (1);
+				}
+				if ( m/<rss / ) {
+					close( FIN );
+					$URI2PAGENAME{ &CaseLowerDomainNameURI( $DP{ $dpl, "URI" } ) } = $dpl;
+					undef $DP{ $dpl, "Author-Name" };
+					undef $DP{ $dpl, "Title" };
+					undef $DP{ $dpl, "Keyword" };
+					undef $DP{ $dpl, "X-VirtualURI" };
+					$DP{ $dpl, "Last-Modified" } = "";
+					$DP{ $dpl, "X-Time-Format" } = $_;
+					&ParseRSS2( $pagename, $infile, 0 );
+					return (0) if ( $DP{ $dpl, "Last-Modified" } ne "" );
+					return (1);
+				}
 			}
 			if ( $DP{ $dpl, "X-VirtualURI" } eq "" ) {
 				if ( /\<title\>(.*)\<\/title\>/i ) {
@@ -2134,6 +2659,46 @@ sub ParseDocumentLocal
 }
 
 ########################################################################
+### WDB.LIRS出力 
+## Print_WDBLIRS()
+#
+sub Print_WDBLIRS
+{
+	local( $onlyorigdata ) = shift;
+	local( $i );
+	local( $cmdname );
+	local( $data );
+	local( $d );
+
+	return if ( $LIRSOUT eq "" );
+ print DEBUGOUT "Print_WDBLIRS\n" if ($DEBUG);
+	open( LIRSOUT, ">$LIRSOUT" );
+	for ( $i=0; $i<$DPLNO; $i++ ) {
+		if ( $onlyorigdata != 0 ) {
+			next if ( $DP{$DPL[$i],"X-Result-Method" } =~ /remote/i );
+		}
+		$data = "LIRS,";
+		$d = &DateToClock( &ExtractNormalDate( $DP{$DPL[$i],"Last-Modified"}, "ZZZ" ) );
+		$data .= sprintf( "%d,", $d+315532800 );
+		$d = &DateToClock( &ExtractNormalDate( $DP{$DPL[$i],"Last-Modified-Detected"}, "ZZZ" ) );
+		$data .= sprintf( "%d,", $d+315532800 );
+		$data .= sprintf( "%d,", 0 );
+		$data .= sprintf( "%s,", $DP{$DPL[$i],"URI"} );
+		$d = $DP{$DPL[$i],"TITLE"};
+		$d =~ s/,//g;
+		$data .= sprintf( "%s,", $d );
+		$d = $DP{$DPL[$i],"AUTHOR"};
+		$d =~ s/,//g;
+		$data .= sprintf( "%s,", $d );
+		$data .= sprintf( "%s,", $ANTENNA_URI );
+		print LIRSOUT "$data\n";
+	}
+	close( LIRSOUT );
+	system( "gzip -c $LIRSOUT>$LIRSOUT.gz" );
+}
+
+
+########################################################################
 ### HINA.TXT出力 
 ## Print_HINATXT()
 #
@@ -2224,7 +2789,7 @@ sub Print_HINADI
 	print DIOUT "\n";
 
 	for ( $i=0; $i<$DPLNO; $i++ ) {
- print DEBUGOUT "\[$DPL[$i]\]\n" if ($DEBUG);
+ print DEBUGOUT "$DPL[$i]\n" if ($DEBUG);
 		if ( $onlyorigdata != 0 ) {
 			next if ( $DP{$DPL[$i],"X-Result-Method" } =~ /remote/i );
 		}
@@ -2362,7 +2927,11 @@ sub Print_HINAHTML
 		$gettime = sprintf( "%02ds", $DP{$DPL[$i],"X-GETTIME"} );
 		$method = $DP{$DPL[$i],"X-Result-Method" };
 # print DEBUGOUT "Method: $method\($mark\)\n" if ($DEBUG);
-		if ( $method =~ /head/i ) {
+		if ( $method =~ /hina-di/i ) {
+			$mark = 'D';
+		} elsif ( $method =~ /rss/i ) {
+			$mark = 'R';
+		} elsif ( $method =~ /head/i ) {
 			$mark = 'H';
 		} elsif ( $method =~ /get/i ) {
 			$mark = 'G';
@@ -2919,9 +3488,8 @@ sub DownloadHTTP
 	local( $path );
 	local( $host );
 	local( $sendstr );
-	local( $name, $aliases, $type, $len, $thataddr );
+	local( $type, $len, $thataddr );
 	local( $that );
-	local( $proto );
 	local( $oldselect );
 	local( $gettime );
 	local( $getgziped );
@@ -2933,9 +3501,11 @@ sub DownloadHTTP
 	local( $isbody ) = 0;
 	local( $readimagesize ) = 0;
 	local( $contenttype );
+	local( $contentencoding );
 	local( $readlines ) = 0;
 	local( $readbufsize ) = 1024*4;
 	local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
+	local( @res, $family, $saddr, $canonname );
 
  print DEBUGOUT "DownloadHTTP():\n" if ($DEBUG);
 
@@ -2989,26 +3559,44 @@ sub DownloadHTTP
 
 	$gettime = time;
 
-	if ( $server =~ /^(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})$/ ) {
-		$thataddr = pack( 'C4', $1, $2, $3, $4 );
-	} else {
-		( $name, $aliases, $type, $len, $thataddr ) = gethostbyname( $server );
-	}
-
-	$that = pack( $SOCKADDR, $AF_INET, $port, $thataddr );
-	( $name, $aliases, $proto ) = getprotobyname( 'tcp' );
-
 	eval {
 		$SIG{'ALRM'} = 'timeout';
 		sub timeout { die "timeout"; }
 		eval {
 			alarm( $HTTP_TIMEOUT_G );
 		};
-		if ( !socket( S, $AF_INET, $SOCK_STREAM, $proto ) ) {
-			die "socket error";
-		}
-		if ( !connect( S, $that ) ) {
-			die "connect error";
+		if ( $USE_IPV6 ) {
+			@res = getaddrinfo( $server, $port, AF_UNSPEC, SOCK_STREAM );
+			$family = -1;
+			while (scalar (@res) >= 5) {
+				( $family, $SOCK_STREAM, $proto, $saddr, $canonname, @res ) = @res;
+				( $host, $port ) = getnameinfo( $saddr, NI_NUMERICHOST | NI_NUMERICSERV );
+ print DEBUGOUT "Trying to connect $host port $port...\n" if ($DEBUG);
+				socket( S, $family, $SOCK_STREAM, $proto ) || next;
+				connect (S, $saddr) && last;
+				close( S );
+				$family = -1;
+			}
+			if ($family == -1) {
+				die "connect error";
+			}
+ print DEBUGOUT "connected to $host port $port\n" if ($DEBUG);
+		} else {
+			if ( $server =~ /^(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})$/ ) {
+				$host = $server;
+				$thataddr = pack( 'C4', $1, $2, $3, $4 );
+			} else {
+				( $host, $aliases, $type, $len, $thataddr ) = gethostbyname( $server );
+			}
+			$that = pack_sockaddr_in( $port, $thataddr );
+ print DEBUGOUT "Trying to connect $host port $port...\n" if ($DEBUG);
+			if ( !socket(S, &PF_INET, &SOCK_STREAM, getprotobyname( 'tcp' )) ) {
+				die "socket error";
+			}
+			if ( !connect( S, $that ) ) {
+				die "connect error";
+			}
+ print DEBUGOUT "connected to $host port $port\n" if ($DEBUG);
 		}
 
 		$oldselect = select;
@@ -3019,6 +3607,7 @@ sub DownloadHTTP
 
 		$contentlength = 0;
 		open( SAVEAS, ">$saveas" );
+		binmode( SAVEAS );
 		while (<S>) {
 			s/\015\12/\012/g;
 			s/\015/\012/g;
@@ -3030,6 +3619,7 @@ sub DownloadHTTP
 			}
 			if ( $_ =~ /^Content-Length:[ \t]+(\d+)/i ) {
 				$contentlength = $1;
+ print DEBUGOUT "Get Content Length: $contentlength\n" if ($DEBUG);
 			}
 			if ( $_ =~ /^Content-Type:[ \t]+(.*)$/i ) {
 				$contenttype = $1;
@@ -3038,19 +3628,25 @@ sub DownloadHTTP
 				$readimagesize = 1024 if ( $1 =~ 'image\/jpeg' );
 				$readimagesize = 1024 if ( $1 =~ 'image\/(x-|)png' );
 				# 今のところ未使用
+ print DEBUGOUT "Get Content Type: $contenttype\n" if ($DEBUG);
 			}
 			if ( $_ =~ /^Content-Encoding:[ \t]+(.*)$/i ) {
+				$contentencoding = $1;
 				$gziped = 0;
-				$gziped = !0 if ( $1 eq 'gzip' );
-				$gziped = !0 if ( $1 eq 'x-gzip' );
+				$gziped = !0 if ( $contentencoding eq 'gzip' );
+				$gziped = !0 if ( $contentencoding eq 'x-gzip' );
 				if ( $gziped != 0 ) {
 					$getgziped = $gziped;
 				}
+ print DEBUGOUT "Get Content Encoding: $contentencoding\n" if ($DEBUG);
 			}
 			print SAVEAS "$_\n";
  print DEBUGOUT "$_\n" if ($DEBUG);
 		}
 		close( SAVEAS );
+		if ( ($contentlength == 0) && ($getgziped) ) {
+			$contentlength = 1024*64;
+		}
 		if ( ($contentlength > 0) && ($method eq "GET") ) {
 			if ( $getgziped ) {
  print DEBUGOUT "Get gziped data - $contentlength byte.\n" if ($DEBUG);
