@@ -548,11 +548,11 @@ sub BuildRemoteDI
 	shift;
 	s/[\012\015]+//;
 	@s = split( /:[ \t]+/ );
-	if ( @s[1] eq "" ) {
+	if ( $s[1] eq "" ) {
 		print DEBUGOUT "line $. : GetRemoteDI(): illegal pagename.";
 		exit 1;
 	}
-	$pagename = @s[1];
+	$pagename = $s[1];
 	$n = $RPLNO++;
 	$RPL[$n] = $pagename;
 	$RP{ $pagename } = "defined";
@@ -585,7 +585,7 @@ sub BuildRemoteDI
 sub BuildDirectDI
 {
 	local( $dpl );
-	local( $s );
+	local( @s );
 	local( $n );
 	local( $info );
 	local( $param );
@@ -593,11 +593,11 @@ sub BuildDirectDI
 	shift;
 	s/[\012\015]+//;
 	@s = split( /:[ \t]+/ );
-	if ( @s[1] eq "" ) {
+	if ( $s[1] eq "" ) {
 		print DEBUGOUT "line $. : GetDirectDI() : illegal dpl.";
 		exit 1;
 	}
-	$dpl = @s[1];
+	$dpl = $s[1];
 	$n = $DPLNO++;
 	$DPL[$n] = $dpl;
 	$DP{ $dpl } = "defined";
@@ -613,10 +613,10 @@ sub BuildDirectDI
 				if ( $param ne "" ) {
 					$DP{ $dpl, $cmdname } = $param;
 				}
-#				split( /:[ \t]+/ );
-# print "\[@s[1]\] ";
-#				if ( @s[1] ne "" ) {
-#					$DP{ $dpl, $cmdname } = @s[1];
+#				@s = split( /:[ \t]+/ );
+# print "\[$s[1]\] ";
+#				if ( $s[1] ne "" ) {
+#					$DP{ $dpl, $cmdname } = $s[1];
 #				}
 				next line;
 			}
