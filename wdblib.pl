@@ -3636,6 +3636,8 @@ sub DownloadHTTP
 	local( $contentencoding );
 	local( $readlines ) = 0;
 	local( $readbufsize ) = 1024*4;
+	local( $status );
+	local( $location );
 	local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
 	local( @res, $family, $saddr, $canonname );
 
@@ -3737,6 +3739,8 @@ sub DownloadHTTP
 		print S "$sendstr";
 		select ( $oldselect );
 
+		$status = 0;
+		$location = "";
 		$contentlength = 0;
 		open( SAVEAS, ">$saveas" );
 		binmode( SAVEAS );
@@ -3748,6 +3752,14 @@ sub DownloadHTTP
 				print DEBUGOUT "--Get Object Body\n" if ($DEBUG);
 				print SAVEAS "\n";
 				last;
+			}
+			if ( $_ =~ /^HTTP\/1\.[01] ([0-9][0-9][0-9]) / ) {
+				$status = $1;
+ print DEBUGOUT "Get Status: $status\n" if ($DEBUG);
+			}
+			if ( $_ =~ /^Location:[ \t]+(.*)$/ ) {
+				$location = $1;
+ print DEBUGOUT "Get Location: $location\n" if ($DEBUG);
 			}
 			if ( $_ =~ /^Content-Length:[ \t]+(\d+)/i ) {
 				$contentlength = $1;
