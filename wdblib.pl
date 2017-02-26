@@ -143,14 +143,10 @@
 require 'jcode.pl';
 require 'wdb.ph';
 
-#use Socket;
-require Socket;
-import Socket;
+use Socket;
 if ( $USE_IPV6 )
 {
-	#use Socket6;
-	require Socket6;
-	import Socket6;
+	eval 'use Socket6';
 }
 
 # &Initialize();
