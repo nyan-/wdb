@@ -48,11 +48,6 @@ $AGENT         = "$AGENT_NAME/$AGENT_VER (Antenna; $HINA_VER; $AGENT_COMMENT)";
 
 # ソケット設定 
 $USE_IPV6      = 0;
-# 以下はwdblib.plがSocket.pmを使うようになったため廃止された。
-# $AF_INET = 2;
-# $SOCK_STREAM = 1;
-# $WNOHANG = 1;
-# $SOCKADDR = 'S n a4 x8';
 
 # HINA.HTMLへの出力フォーマット 
 $HINA_HTML_FORMAT =
