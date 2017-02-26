@@ -3639,6 +3639,7 @@ sub DownloadHTTP
 	local( $sendstr );
 	local( $type, $len, $thataddr );
 	local( $that );
+	local( $proto );
 	local( $oldselect );
 	local( $gettime );
 	local( $getgziped );
