@@ -731,6 +731,8 @@ sub StartDance
 			$method = "GET";
 		} elsif ( $DP{$dpl,"METHOD" } eq 'HEAD2' ) {
 			$method = "HEAD";
+		} elsif ( $DP{$dpl,"METHOD" } eq 'EXTCMD' ) {
+			$method = "EXTCMD";
 		} else {
 			if ( $DP{$dpl,"METHOD"} eq 'REMOTE' ) {
 				next;
@@ -3084,6 +3086,8 @@ sub Print_HINAHTML
 			$mark = 'H';
 		} elsif ( $method =~ /get/i ) {
 			$mark = 'G';
+		} elsif ( $method =~ /extcmd/i ) {
+			$mark = 'C';
 		} elsif ( $method =~ /remote/i ) {
 # print DEBUGOUT "X-Authorized-Pagename: $DP{$DPL[$i],\"X-Authorized-Pagename\"}\n" if ($DEBUG);
 			$mark = $RP{ $DP{$DPL[$i],"X-Authorized-Pagename"}, "MARKURI" };
@@ -3607,7 +3611,11 @@ sub DownloadDocumentHTTP
 	}
 	$href = &ExtractNormalURI( $uri );
 	$modified = $DP{ $dpl, "Last-Modified" };
-	( $status, $gettime, $contenttype ) = &DownloadHTTP( $href, $method, $saveas, $modified );
+	if ( $method eq "EXTCMD" ) {
+		( $status, $gettime, $contenttype ) = &DownloadEXTCMD( $href, $saveas );
+	} else {
+		( $status, $gettime, $contenttype ) = &DownloadHTTP( $href, $method, $saveas, $modified );
+	}
 	$DP{ $dpl, "X-GETTIME" } = $gettime;
 	$DP{ $dpl, "Content-Type" } = $contenttype;
 	if ( $status == 0 ) {
@@ -3861,6 +3869,38 @@ sub DownloadHTTP
 	}
 
 	return (0, $gettime, $contenttype);
+}
+
+########################################################################
+### 外部コマンドによるダウンロード 
+## SUCCESS = DownloadEXTCMD( HREF, SAVEAS )
+#
+sub DownloadEXTCMD
+{
+	local( $href ) = shift;
+	local( $saveas ) = shift;
+	local( $flags );
+	local( $gettime );
+	local( $status );
+	local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
+
+ print DEBUGOUT "DownloadEXTCMD():\n" if ($DEBUG);
+
+	$flags = "-dump_both";
+	$flags .= " -o user_agent=\"$AGENT\"";
+	$flags .= " -header \"$ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
+	$flags .= " -header \"Pragma: no-cache\"";
+
+ ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
+ print DEBUGOUT sprintf( "%02d:%02d:%02d Get %s\n", $hour, $min, $sec, $href ) if ($DEBUG);
+
+	$gettime = time;
+
+	$status = system("$EXTCMD $flags $href > $saveas");
+
+	$gettime = time - $gettime;
+
+	return ($status, $gettime, "");
 }
 
 ########################################################################
