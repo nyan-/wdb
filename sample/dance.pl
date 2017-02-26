@@ -17,6 +17,9 @@ $WDBFILE = "config.wdb";
 # WDBが使用するPROXYを"サーバ:ポート"で指定 
 # $PROXY    = "your-server:8080";
 
+# WDBが使用する外部コマンド (w3mのみ対応)
+$EXTCMD = "/usr/local/bin/w3m";
+
 # アンテナシステムのURI 
 $ANTENNA_URI  = "http://www.example.com/~your-home/your-antenna/";
 
