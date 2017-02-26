@@ -661,7 +661,7 @@ sub ReadRemortFile
 			$RP{ $RPL[$i], "X-VirtualURI" } = $virtualuri;
 			$uri = $virtualuri;
 		}
-		if ( $uri =~ /^http:/ ) {
+		if ( $uri =~ /^https?:/ ) {
 			$remotefile = $RP{ $RPL[$i], "SAVEAS" };
 			&DownloadRemoteFileHTTP( $RPL[$i], "GET", $remotefile )
 		} else {
@@ -853,7 +853,7 @@ sub ExtractNormalURI
 	local( $uri ) = shift;
  print DEBUGOUT "ExtractNormalURI():\n" if ($DEBUG);
  print DEBUGOUT "$uri\n" if ($DEBUG);
-	$uri =~ /(http:.*)/i;
+	$uri =~ /(https?:.*)/i;
 	$uri = $1;
 	if ( $1 eq "" ) {
 # print DEBUGOUT "\=\=\>\[\"\"]\n" if ($DEBUG);
@@ -876,7 +876,7 @@ sub CaseLowerDomainNameURI
 {
 	local( $uri ) = shift;
 # print DEBUGOUT "CaseLowerDomainNameURI( $uri ):\n" if ($DEBUG);
-	$uri =~ s%(http://[^/]*)%\L$1\E%i;
+	$uri =~ s%(https?://[^/]*)%\L$1\E%i;
 # print DEBUGOUT "to: $uri\n" if ($DEBUG);
 	return ($uri);
 }
@@ -2005,7 +2005,7 @@ sub ParseRSS
 			$rdfabout = $ana_rdfabout;
 			$rdfabout =~ s/^.*<(channel|item)[ \t]+rdf:about=\"([^\"]*)\".*$/$2/;
 			$rdfabout = &ExtractNormalURI( $rdfabout );
-			if ( $rdfabout =~ m/^http:/ ) {
+			if ( $rdfabout =~ m/^https?:/ ) {
  print DEBUGOUT "Found URI: \[$rdfabout\]\n" if ($DEBUG);
 				undef $lmdate;
 				undef $title;
@@ -3655,17 +3655,17 @@ sub DownloadHTTP
 		$port =~ s/.*://;
 		$path = $href;
 		$host = $href;
-		$host =~ s%http://([^/:]+).*$%$1%;
+		$host =~ s%https?://([^/:]+).*$%$1%;
 	} else {
 		$server = $href;
-		$server =~ s%http://([^/:]+).*$%$1%;
+		$server =~ s%https?://([^/:]+).*$%$1%;
 		$port = $href;
-		$port =~ s%http://[^:/]+:%%;
+		$port =~ s%https?://[^:/]+:%%;
 		$port =~ s%^([^/]*).*$%$1%;
 		if ( $port == 0 ) {
 			$port = 80;
 		}
-		$path =~ s%http://[^/]+%%;
+		$path =~ s%https?://[^/]+%%;
 		$host = $server;
 	}
 
