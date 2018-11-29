@@ -3884,7 +3884,7 @@ sub DownloadEXTCMD
 
 	$flags = "-dump_both";
 	$flags .= " -o user_agent=\"$AGENT\"";
-	$flags .= " -header \"$ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
+	$flags .= " -header \"Referer: $ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
 	$flags .= " -header \"Pragma: no-cache\"";
 
  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
