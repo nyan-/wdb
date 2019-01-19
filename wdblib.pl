@@ -3883,6 +3883,8 @@ sub DownloadEXTCMD
  print DEBUGOUT "DownloadEXTCMD():\n" if ($DEBUG);
 
 	$flags = "-dump_both";
+	$flags .= " -4";
+	$flags .= " -o accept_encoding=identity";
 	$flags .= " -o user_agent=\"$AGENT\"";
 	$flags .= " -header \"Referer: $ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
 	$flags .= " -header \"Pragma: no-cache\"";
