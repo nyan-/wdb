@@ -3894,7 +3894,7 @@ sub DownloadEXTCMD
 
 	$gettime = time;
 
-	$status = system("$EXTCMD $flags $href > $saveas");
+	$status = system("/usr/bin/timeout $HTTP_TIMEOUT $EXTCMD $flags $href > $saveas");
 
 	$gettime = time - $gettime;
 
