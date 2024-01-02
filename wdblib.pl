@@ -3882,12 +3882,23 @@ sub DownloadEXTCMD
 
  print DEBUGOUT "DownloadEXTCMD():\n" if ($DEBUG);
 
-	$flags = "-dump_both";
-	$flags .= " -4";
-	$flags .= " -o accept_encoding=identity";
-	$flags .= " -o user_agent=\"$AGENT\"";
-	$flags .= " -header \"Referer: $ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
-	$flags .= " -header \"Pragma: no-cache\"";
+	if ($EXTCMD =~ /w3m/) {
+		$flags = "-dump_both";
+		$flags .= " $EXTCMD_FLAGS" if (defined $EXTCMD_FLAGS);
+		$flags .= " -o accept_encoding=identity";
+		$flags .= " -o user_agent=\"$AGENT\"";
+		$flags .= " -header \"Referer: $ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
+		$flags .= " -header \"Pragma: no-cache\"";
+	} elsif ($EXTCMD =~ /curl/) {
+		$flags = "-s --dump-header -";
+		$flags .= " $EXTCMD_FLAGS" if (defined $EXTCMD_FLAGS);
+		$flags .= " -H \"Accept-Encoding: identity\"";
+		$flags .= " -H \"User-Agent: $AGENT\"";
+		$flags .= " -H \"Referer: $ANTENNA_URI\"" if ( $ANTENNA_URI ne "" );
+		$flags .= " -H \"Pragma: no-cache\"";
+	} else {
+		return (127, 0, "");
+	}
 
  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
  print DEBUGOUT sprintf( "%02d:%02d:%02d Get %s\n", $hour, $min, $sec, $href ) if ($DEBUG);
